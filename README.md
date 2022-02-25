@@ -1,7 +1,5 @@
 # Terraform provider for credstash secrets
 
-[![CircleCI](https://circleci.com/gh/sspinc/terraform-provider-credstash.svg?style=svg)](https://circleci.com/gh/sspinc/terraform-provider-credstash)
-
 Read secrets stored with [credstash][credstash].
 
 ## Acknowledgements
@@ -23,7 +21,7 @@ This repo is forked from https://github.com/terraform-mars/terraform-provider-cr
 
 ### From source
 
-    $ git clone https://github.com/sspinc/terraform-provider-credstash.git
+    $ git clone https://github.com/granular-oss/terraform-provider-credstash.git
     $ cd /path/to/terraform-provider-credstash
     $ make install
 
@@ -79,7 +77,7 @@ provider "credstash" {
 
 For dependency management Go modules are used thus you will need go 1.11+
 
-1. Clone the repo `git clone https://github.com/sspinc/terraform-provider-credstash.git`
+1. Clone the repo `git clone https://github.com/granular-oss/terraform-provider-credstash.git`
 2. Run `make test` to run all tests
 
 ## Contributing
@@ -93,4 +91,4 @@ For dependency management Go modules are used thus you will need go 1.11+
 
 [credstash]: https://github.com/fugue/credstash
 [awscred]: https://github.com/aws/aws-sdk-go#configuring-credentials
-[provider_binary]: https://github.com/sspinc/terraform-provider-credstash/releases/latest
+[provider_binary]: https://github.com/granular-oss/terraform-provider-credstash/releases/latest
