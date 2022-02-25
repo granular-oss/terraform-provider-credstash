@@ -5,6 +5,7 @@ Read secrets stored with [credstash][credstash].
 ## Acknowledgements
 
 This repo is forked from https://github.com/terraform-mars/terraform-provider-credstash
+That repo is forked from https://github.com/sspinc/terraform-provider-credstash
 
 ## Install
 
