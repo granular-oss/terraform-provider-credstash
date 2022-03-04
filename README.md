@@ -1,3 +1,5 @@
+[![GitHub go.mod Go version of a Go module](https://img.shields.io/github/go-mod/go-version/granular-oss/terraform-provider-credstash.svg)](https://github.com/granular-oss/terraform-provider-credstash) ![example branch parameter](https://github.com/granular-oss/terraform-provider-credstash/actions/workflows/test.yml/badge.svg)
+
 # Terraform provider for credstash secrets
 
 Read secrets stored with [credstash][credstash].
