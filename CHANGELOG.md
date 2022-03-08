@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 
 
-## [Unreleased]
+## [v0.6.0-alpha.1]
 * Add Docs for Terraform Registry
 * Update to terraform plugin SDK2
 * Update GitHub Actions to include go test
