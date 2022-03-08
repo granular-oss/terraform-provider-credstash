@@ -2,12 +2,10 @@ package main
 
 import (
 	"testing"
-
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
 func TestProvider(t *testing.T) {
-	if err := provider().(*schema.Provider).InternalValidate(); err != nil {
+	if err := provider().InternalValidate(); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 }
