@@ -1,5 +1,13 @@
-## v0.6.0 (Unreleased)
+## v0.6.1 (Unreleased)
 
+
+
+## v0.6.0 (03 16, 2022)
+
+IMPROVEMENTS:
+* No changes since v0.6.0-alpha.2 release.
+  
+## v0.6.0-alpha.2 (03 16, 2022)
 
 IMPROVEMENTS:
 
