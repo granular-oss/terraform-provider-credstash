@@ -14,9 +14,13 @@ var _ *schema.Provider = provider()
 const defaultAWSProfile = "default"
 
 func provider() *schema.Provider {
+	// rovider that enables reading and creating of secrets with credstash
 	return &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
 			"credstash_secret": dataSourceSecret(),
+		},
+		ResourcesMap: map[string]*schema.Resource{
+			"credstash_secret": resourceSecret(),
 		},
 		Schema: map[string]*schema.Schema{
 			"region": {

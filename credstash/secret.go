@@ -10,12 +10,18 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash"
+	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/kms"
+)
+
+var (
+	ErrSecretNotFound = errors.New("Secret Not Found")
 )
 
 func decryptData(material keyMaterial, key []byte) (string, error) {
@@ -90,6 +96,62 @@ func decryptKey(svc decrypter, ciphertext []byte, ctx map[string]string) (dataKe
 	dataKey = out.Plaintext[:32]
 	hmacKey = out.Plaintext[32:]
 	return
+}
+
+type DataKey struct {
+	CiphertextBlob []byte
+	Plaintext      []byte
+}
+
+func generateDataKey(svc decrypter, alias string, encContext map[string]*string, size int) (*DataKey, error) {
+
+	numberOfBytes := int64(size)
+
+	params := &kms.GenerateDataKeyInput{
+		KeyId:             aws.String(alias),
+		EncryptionContext: encContext,
+		GrantTokens:       []*string{},
+		NumberOfBytes:     aws.Int64(numberOfBytes),
+	}
+
+	resp, err := svc.GenerateDataKey(params)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &DataKey{
+		CiphertextBlob: resp.CiphertextBlob,
+		Plaintext:      resp.Plaintext, // return the plain text key after generation
+	}, nil
+}
+
+// Encrypt AES encryption method which matches the pycrypto package
+// using CTR and AES256. Note this routine seeds the counter/iv with a value of 1
+// then throws it away?!
+func Encrypt(key, plaintext []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertext := make([]byte, len(plaintext))
+
+	stream := cipher.NewCTR(block, createNonce())
+	stream.XORKeyStream(ciphertext, plaintext)
+
+	return ciphertext, nil
+}
+
+// ComputeHmac256 compute a hmac256 signature of the supplied message and return
+// the value hex encoded
+func ComputeHmac256(message, secret []byte) []byte {
+	h := hmac.New(sha256.New, secret)
+	h.Write(message)
+	src := h.Sum(nil)
+	dst := make([]byte, hex.EncodedLen(len(src)))
+	hex.Encode(dst, src)
+	return dst
 }
 
 func getKeyMaterial(db dynamoDB, name, version, table string) (keyMaterial, error) {
@@ -224,4 +286,43 @@ func getBinaryStringAndDecode(item map[string]*dynamodb.AttributeValue, key stri
 		return nil, fmt.Errorf("missing key: %s", key)
 	}
 	return f(string(value.B))
+}
+
+// GetHighestVersion look up the highest version for a given name
+func GetHighestVersion(svc dynamoDB, tableName *string, name string) (string, error) {
+	log.Printf("[DEBUG]  Looking up highest version: %s", name)
+
+	res, err := svc.Query(&dynamodb.QueryInput{
+		TableName: tableName,
+		ExpressionAttributeNames: map[string]*string{
+			"#N": aws.String("name"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":name": {
+				S: aws.String(name),
+			},
+		},
+		KeyConditionExpression: aws.String("#N = :name"),
+		Limit:                  aws.Int64(1),
+		ConsistentRead:         aws.Bool(true),
+		ScanIndexForward:       aws.Bool(false), // descending order
+		ProjectionExpression:   aws.String("version"),
+	})
+
+	if err != nil {
+		return "", err
+	}
+	log.Print("[DEBUG]  Got to line 315")
+
+	if len(res.Items) == 0 {
+		return "", ErrSecretNotFound
+	}
+
+	v := res.Items[0]["version"]
+
+	if v == nil {
+		return "", ErrSecretNotFound
+	}
+
+	return aws.StringValue(v.S), nil
 }

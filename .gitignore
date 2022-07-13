@@ -21,3 +21,9 @@ vendor/
 go.work
 
 /terraform-provider-credstash
+
+# Ignore vscode
+.vscode
+
+# Ignore credstash.log
+credstash.log
