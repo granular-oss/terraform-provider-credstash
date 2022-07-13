@@ -9,7 +9,6 @@ import (
 	"github.com/granular-oss/terraform-provider-credstash/credstash"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/secrethub/secrethub-go/pkg/randchar"
 )
 
 func resourceSecret() *schema.Resource {
@@ -71,8 +70,8 @@ func resourceSecret() *schema.Resource {
 						},
 						"use_symbols": {
 							Type:        schema.TypeBool,
-							Deprecated:  "use the charsets attribute instead",
 							Optional:    true,
+							Default:     true,
 							Description: "Whether the secret should contain symbols.",
 						},
 						"charsets": {
@@ -120,43 +119,13 @@ func resourceSecretCreate(ctx context.Context, d *schema.ResourceData, m interfa
 		useSymbols := settings["use_symbols"].(bool)
 		length := settings["length"].(int)
 		charsetSet := settings["charsets"].(*schema.Set)
-		charsets := charsetSet.List()
-		charset := randchar.Charset{}
-		if len(charsets) == 0 {
-			charset = randchar.Alphanumeric
-		}
-		if useSymbols {
-			charset = charset.Add(randchar.Symbols)
-		}
-		for _, charsetName := range charsets {
-			set, found := randchar.CharsetByName(charsetName.(string))
-			if !found {
-				return diag.FromErr(fmt.Errorf("unknown charset: %s", charsetName))
-			}
-			charset = charset.Add(set)
-		}
-
 		minRuleMap := settings["min"].(map[string]interface{})
-		var minRules []randchar.Option
-		for charset, min := range minRuleMap {
-			n := min.(int)
-			set, found := randchar.CharsetByName(charset)
-			if !found {
-				return diag.FromErr(fmt.Errorf("unknown charset: %s", charset))
-			}
-			minRules = append(minRules, randchar.Min(n, set))
-		}
-
+		charsets := charsetSet.List()
 		var err error
-		rand, err := randchar.NewRand(charset, minRules...)
+		value, err = client.GenerateRandomSecret(length, useSymbols, charsets, minRuleMap)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		byteValue, err := rand.Generate(length)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		value = string(byteValue)
 	}
 
 	err := client.PutSecret(table, name, value, version, context)
@@ -224,6 +193,10 @@ func resourceSecretUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 		name := d.Get("name").(string)
 		table := d.Get("table").(string)
 		value := d.Get("value").(string)
+		generateList := d.Get("generate").([]interface{})
+		if value == "" && len(generateList) == 0 {
+			return diag.FromErr(fmt.Errorf("either 'value' or 'generate' must be specified"))
+		}
 
 		context := make(map[string]*string)
 		for k, v := range d.Get("context").(map[string]interface{}) {
@@ -236,6 +209,21 @@ func resourceSecretUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 		if err != nil {
 			return diag.FromErr(err)
 		}
+
+		if len(generateList) > 0 {
+			settings := generateList[0].(map[string]interface{})
+			useSymbols := settings["use_symbols"].(bool)
+			length := settings["length"].(int)
+			charsetSet := settings["charsets"].(*schema.Set)
+			minRuleMap := settings["min"].(map[string]interface{})
+			charsets := charsetSet.List()
+			var err error
+			value, err = c.GenerateRandomSecret(length, useSymbols, charsets, minRuleMap)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		}
+
 		err = c.PutSecret(table, name, value, version, context)
 
 		if err != nil {

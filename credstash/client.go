@@ -2,6 +2,7 @@ package credstash
 
 import (
 	"encoding/base64"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/secrethub/secrethub-go/pkg/randchar"
 )
 
 type Client struct {
@@ -62,6 +64,44 @@ func (c *Client) GetSecret(name, table, version string, ctx map[string]string) (
 	}
 
 	return decryptData(material, dataKey)
+}
+
+func (c *Client) GenerateRandomSecret(length int, useSymbols bool, charsets []interface{}, minRuleMap map[string]interface{}) (string, error) {
+	charset := randchar.Charset{}
+	if len(charsets) == 0 {
+		charset = randchar.Alphanumeric
+	}
+	if useSymbols {
+		charset = charset.Add(randchar.Symbols)
+	}
+	for _, charsetName := range charsets {
+		set, found := randchar.CharsetByName(charsetName.(string))
+		if !found {
+			return "", fmt.Errorf("unknown charset: %s", charsetName)
+		}
+		charset = charset.Add(set)
+	}
+	var minRules []randchar.Option
+	for charset, min := range minRuleMap {
+		n := min.(int)
+		set, found := randchar.CharsetByName(charset)
+		if !found {
+			return "", fmt.Errorf("unknown charset: %s", charset)
+		}
+		minRules = append(minRules, randchar.Min(n, set))
+	}
+
+	var err error
+	rand, err := randchar.NewRand(charset, minRules...)
+	if err != nil {
+		return "", err
+	}
+	byteValue, err := rand.Generate(length)
+	if err != nil {
+		return "", err
+	}
+	value := string(byteValue)
+	return value, nil
 }
 
 func (c *Client) PutSecret(tableName string, name string, value string, version string, ctx map[string]*string) error {

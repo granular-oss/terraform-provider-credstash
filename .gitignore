@@ -27,3 +27,9 @@ go.work
 
 # Ignore credstash.log
 credstash.log
+
+# Ingore test terraform
+test/.terraform
+test/terraform.tfstate*
+#Ignore lock file as we always want integration to install latest provider
+test/.terraform.lock.hcl
