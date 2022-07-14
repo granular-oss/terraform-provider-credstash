@@ -37,7 +37,6 @@ resource "credstash_secret" "my_pub_key" {
 
 ### Optional
 
-- `autoversion` (Boolean) Automatically increment the version of the credential to be stored. This option causes the version arguement to be ignored. (This option will fail if the currently stored version is not numeric.)
 - `context` (Map of String) encryption context for the secret
 - `generate` (Block List, Max: 1) Settings for autogenerating a secret. Either `value` or `generate` must be defined. (see [below for nested schema](#nestedblock--generate))
 - `table` (String) name of DynamoDB table where the secrets are stored
