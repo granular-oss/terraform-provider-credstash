@@ -90,6 +90,9 @@ func resourceSecret() *schema.Resource {
 				},
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -149,6 +152,10 @@ func resourceSecretRead(ctx context.Context, d *schema.ResourceData, m interface
 	var diags diag.Diagnostics
 
 	name := d.Get("name").(string)
+	//Make Imports work, by reading ID if name is empty
+	if name == "" {
+		name = d.Id()
+	}
 	version := d.Get("version").(int)
 	table := d.Get("table").(string)
 
@@ -174,6 +181,11 @@ func resourceSecretRead(ctx context.Context, d *schema.ResourceData, m interface
 	}
 
 	d.SetId(hash(value.Secret))
+	d.Set("value", value.Secret)
+	d.Set("table", table)
+	d.Set("version", version)
+	d.Set("name", name)
+	d.Set("generate", d.Get("generate"))
 
 	return diags
 }
@@ -257,11 +269,6 @@ func resourceSecretUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 		// }
 
 		d.Set("last_updated", time.Now().Format(time.RFC850))
-
-		d.Set("value", value)
-		d.Set("table", table)
-		d.Set("generate", d.Get("generate"))
-
 	}
 
 	return resourceSecretRead(ctx, d, m)

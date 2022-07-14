@@ -26,6 +26,10 @@ variable "secret_1_version" {
 variable "secret_2" {
   type = string
 }
+variable "secret_5" {
+  type = string
+}
+
 resource "credstash_secret" "terraform-provider-credstash-integration-test-1" {
   name = "terraform-provider-credstash-integration-test-1"
   # generate {
@@ -50,3 +54,8 @@ resource "credstash_secret" "terraform-provider-credstash-integration-test-3" {
 data "credstash_secret" "terraform-provider-credstash-integration-test-4" {
   name = "terraform-provider-credstash-integration-test-4"
 }
+
+# resource "credstash_secret" "terraform-provider-credstash-integration-test-5" {
+#   name  = "terraform-provider-credstash-integration-test-5"
+#   value = var.secret_5
+# }

@@ -31,6 +31,6 @@ run_integration_test:
 	credstash delete terraform-provider-credstash-integration-test-2
 	credstash delete terraform-provider-credstash-integration-test-3
 	cd test; terraform init
-	cd test; TF_LOG=debug TF_VAR_secret_1_version=1 TF_VAR_secret_1=IAmABadPassword1 TF_VAR_secret_2=IAmABadPassword2 terraform plan
-	cd test; TF_LOG=debug TF_VAR_secret_1_version=1 TF_VAR_secret_1=IAmABadPassword1 TF_VAR_secret_2=IAmABadPassword2 terraform apply -auto-approve
+	cd test; TF_LOG=debug TF_VAR_secret_1_version=1 TF_VAR_secret_1=IAmABadPassword1 TF_VAR_secret_2=IAmABadPassword2 TF_VAR_secret_5=IamNew terraform plan
+	cd test; TF_LOG=debug TF_VAR_secret_1_version=1 TF_VAR_secret_1=IAmABadPassword1 TF_VAR_secret_2=IAmABadPassword2 TF_VAR_secret_5=IamNew terraform apply -auto-approve
 	cd test; terraform show -json |jq
