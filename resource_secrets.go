@@ -36,12 +36,6 @@ func resourceSecret() *schema.Resource {
 				Description: "version of the secrets",
 				Default:     0,
 			},
-			"autoversion": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: "Automatically increment the version of the credential to be stored. This option causes the version arguement to be ignored. (This option will fail if the currently stored version is not numeric.)",
-				Default:     false,
-			},
 			"context": {
 				Type:        schema.TypeMap,
 				Optional:    true,
@@ -100,7 +94,7 @@ func resourceSecretCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	client := m.(*credstash.Client)
 
 	// Warning or errors can be collected in a slice type
-	var diags diag.Diagnostics
+	//var diags diag.Diagnostics
 
 	name := d.Get("name").(string)
 	version := d.Get("version").(int)
@@ -140,9 +134,16 @@ func resourceSecretCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.Set("version", version)
+	err = d.Set("version", version)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	err = d.Set("value", string(value))
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	d.SetId(hash(value))
-	return diags
+	return resourceSecretRead(ctx, d, m)
 }
 
 func resourceSecretRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {

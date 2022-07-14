@@ -23,7 +23,7 @@ variable "secret_1_version" {
   type = number
 }
 
-variable "secret_2" {
+variable "secret_3" {
   type = string
 }
 variable "secret_5" {
@@ -46,16 +46,30 @@ resource "credstash_secret" "terraform-provider-credstash-integration-test-2" {
   }
 }
 
+
+
 resource "credstash_secret" "terraform-provider-credstash-integration-test-3" {
   name  = "terraform-provider-credstash-integration-test-3"
-  value = var.secret_2
+  value = var.secret_3
 }
 
 data "credstash_secret" "terraform-provider-credstash-integration-test-4" {
   name = "terraform-provider-credstash-integration-test-4"
 }
 
-# resource "credstash_secret" "terraform-provider-credstash-integration-test-5" {
-#   name  = "terraform-provider-credstash-integration-test-5"
-#   value = var.secret_5
-# }
+resource "credstash_secret" "terraform-provider-credstash-integration-test-5" {
+  name  = "terraform-provider-credstash-integration-test-5"
+  value = var.secret_5
+}
+resource "credstash_secret" "terraform-provider-credstash-integration-test-6" {
+  name    = "terraform-provider-credstash-integration-test-6"
+  version = 10
+  generate {
+    length = 10
+  }
+}
+
+data "credstash_secret" "terraform-provider-credstash-integration-test-7" {
+  name    = "terraform-provider-credstash-integration-test-7"
+  version = 2
+}
