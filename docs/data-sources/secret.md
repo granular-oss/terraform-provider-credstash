@@ -41,7 +41,7 @@ resource "aws_db_instance" "postgres" {
 
 - `context` (Map of String) encryption context for the secret
 - `table` (String) name of DynamoDB table where the secrets are stored
-- `version` (String) version of the secrets
+- `version` (Number) version of the secrets
 
 ### Read-Only
 

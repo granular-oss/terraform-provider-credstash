@@ -42,7 +42,7 @@ resource "credstash_secret" "my_pub_key" {
 - `generate` (Block List, Max: 1) Settings for autogenerating a secret. Either `value` or `generate` must be defined. (see [below for nested schema](#nestedblock--generate))
 - `table` (String) name of DynamoDB table where the secrets are stored
 - `value` (String, Sensitive) The secret contents. Either `value` or `generate` must be defined.
-- `version` (String) version of the secrets
+- `version` (Number) version of the secrets
 
 ### Read-Only
 
@@ -59,6 +59,6 @@ Optional:
 
 - `charsets` (Set of String) Define the set of characters to randomly generate a password from. Options are all, alphanumeric, numeric, lowercase, uppercase, letters, symbols and human-readable.
 - `min` (Map of Number) Ensure that the generated secret contains at least n characters from the given character set. Note that adding constraints reduces the strength of the secret.
-- `use_symbols` (Boolean, Deprecated) Whether the secret should contain symbols.
+- `use_symbols` (Boolean) Whether the secret should contain symbols.
 
 
