@@ -21,6 +21,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/secrethub/secrethub-go v0.33.0 // indirect
+	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/zclconf/go-cty v1.10.0 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sys v0.0.0-20220307203707-22a9840ba4d7 // indirect

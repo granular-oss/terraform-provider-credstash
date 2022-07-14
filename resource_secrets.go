@@ -31,10 +31,10 @@ func resourceSecret() *schema.Resource {
 				Default:     "",
 			},
 			"version": {
-				Type:        schema.TypeString,
+				Type:        schema.TypeInt,
 				Optional:    true,
 				Description: "version of the secrets",
-				Default:     "",
+				Default:     0,
 			},
 			"autoversion": {
 				Type:        schema.TypeBool,
@@ -100,7 +100,7 @@ func resourceSecretCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	var diags diag.Diagnostics
 
 	name := d.Get("name").(string)
-	version := d.Get("version").(string)
+	version := d.Get("version").(int)
 	table := d.Get("table").(string)
 	value := d.Get("value").(string)
 	generateList := d.Get("generate").([]interface{})
@@ -108,10 +108,10 @@ func resourceSecretCreate(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(fmt.Errorf("either 'value' or 'generate' must be specified"))
 	}
 
-	context := make(map[string]*string)
+	context := credstash.NewEncryptionContextValue()
 	for k, v := range d.Get("context").(map[string]interface{}) {
 		stringValue := fmt.Sprintf("%v", v)
-		context[k] = &stringValue
+		(*context)[k] = &stringValue
 	}
 
 	if len(generateList) > 0 {
@@ -127,13 +127,18 @@ func resourceSecretCreate(ctx context.Context, d *schema.ResourceData, m interfa
 			return diag.FromErr(err)
 		}
 	}
-
-	err := client.PutSecret(table, name, value, version, context)
+	var paddedVersion string
+	if version == 0 {
+		paddedVersion = client.PaddedInt(1)
+	} else {
+		paddedVersion = client.PaddedInt(version)
+	}
+	err := client.PutSecret(table, name, value, paddedVersion, context)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	d.Set("version", version)
 	d.SetId(hash(value))
-
 	return diags
 }
 
@@ -144,21 +149,31 @@ func resourceSecretRead(ctx context.Context, d *schema.ResourceData, m interface
 	var diags diag.Diagnostics
 
 	name := d.Get("name").(string)
-	version := d.Get("version").(string)
+	version := d.Get("version").(int)
 	table := d.Get("table").(string)
 
-	context := make(map[string]string)
+	context := credstash.NewEncryptionContextValue()
 	for k, v := range d.Get("context").(map[string]interface{}) {
-		context[k] = fmt.Sprintf("%v", v)
+		stringValue := fmt.Sprintf("%v", v)
+		(*context)[k] = &stringValue
 	}
 
-	log.Printf("[DEBUG] Getting secret for name=%q table=%q version=%q context=%+v", name, table, version, context)
-	value, err := client.GetSecret(name, table, version, context)
+	var value *credstash.DecryptedCredential
+	var err error
+
+	log.Printf("[DEBUG] Getting secret for name=%s table=%s version=%v context=%+v", name, table, version, context)
+
+	if version == 0 {
+		value, err = client.GetHighestVersionSecret(table, name, context)
+	} else {
+		value, err = client.GetSecret(name, table, client.PaddedInt(version), context)
+	}
+
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.SetId(hash(value))
+	d.SetId(hash(value.Secret))
 
 	return diags
 }
@@ -188,23 +203,25 @@ func resourceSecretDelete(ctx context.Context, d *schema.ResourceData, m interfa
 func resourceSecretUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(*credstash.Client)
 
-	if d.HasChange("value") || d.HasChange("generate") {
+	if d.HasChange("value") || d.HasChange("generate") || d.HasChange("version") {
 
 		name := d.Get("name").(string)
 		table := d.Get("table").(string)
 		value := d.Get("value").(string)
+		version := d.Get("version").(int)
+
 		generateList := d.Get("generate").([]interface{})
 		if value == "" && len(generateList) == 0 {
 			return diag.FromErr(fmt.Errorf("either 'value' or 'generate' must be specified"))
 		}
 
-		context := make(map[string]*string)
+		context := credstash.NewEncryptionContextValue()
 		for k, v := range d.Get("context").(map[string]interface{}) {
 			stringValue := fmt.Sprintf("%v", v)
-			context[k] = &stringValue
+			(*context)[k] = &stringValue
 		}
 
-		version, err := c.ResolveVersion(table, name, 0)
+		paddedVersion, err := c.ResolveVersion(table, name, version)
 
 		if err != nil {
 			return diag.FromErr(err)
@@ -224,15 +241,26 @@ func resourceSecretUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 			}
 		}
 
-		err = c.PutSecret(table, name, value, version, context)
+		err = c.PutSecret(table, name, value, paddedVersion, context)
 
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		//Update the secret
+		//Update the secret version if we are not storing 0.
+		// if version != 0 {
+		// 	intVersion, err := strconv.Atoi(paddedVersion)
+		// 	if err != nil {
+		// 		return diag.FromErr(err)
+		// 	}
+		// 	d.Set("version", intVersion)
+		// }
 
 		d.Set("last_updated", time.Now().Format(time.RFC850))
+
+		d.Set("value", value)
+		d.Set("table", table)
+		d.Set("generate", d.Get("generate"))
 
 	}
 

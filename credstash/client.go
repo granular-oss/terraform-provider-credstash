@@ -1,6 +1,7 @@
 package credstash
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -45,25 +47,150 @@ func New(table string, sess *session.Session) *Client {
 	}
 }
 
-func (c *Client) GetSecret(name, table, version string, ctx map[string]string) (string, error) {
+func (c *Client) decryptCredential(cred *Credential, ctx *EncryptionContextValue) (*DecryptedCredential, error) {
+
+	wrappedKey, err := base64.StdEncoding.DecodeString(cred.Key)
+
+	if err != nil {
+		return nil, err
+	}
+
+	dk, err := c.DecryptDataKey(wrappedKey, ctx)
+	if awsErr, ok := err.(awserr.Error); ok {
+		// Create reasoned responses to assist with debugging
+		switch awsErr.Code() {
+		case "AccessDeniedException":
+			err = awserr.New(awsErr.Code(), "KMS Access Denied to decrypt", nil)
+		case "InvalidCiphertextException":
+			err = awserr.New(awsErr.Code(), "The encryption context provided "+
+				"may not match the one used when the credential was stored", nil)
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	dataKey := dk.Plaintext[:32]
+	hmacKey := dk.Plaintext[32:]
+
+	contents, err := base64.StdEncoding.DecodeString(cred.Contents)
+	if err != nil {
+		return nil, err
+	}
+
+	hexhmac := ComputeHmac256(contents, hmacKey)
+
+	if !bytes.Equal(hexhmac, cred.Hmac) {
+		return nil, ErrHmacValidationFailed
+	}
+
+	secret, err := Decrypt(dataKey, contents)
+
+	if err != nil {
+		return nil, err
+	}
+
+	plainText := string(secret)
+
+	return &DecryptedCredential{Credential: cred, Secret: plainText}, nil
+}
+
+// GetHighestVersionSecret retrieves latest secret from dynamodb using the name
+func (c *Client) GetHighestVersionSecret(table string, name string, encContext *EncryptionContextValue) (*DecryptedCredential, error) {
+	log.Print("Getting highest version secret")
 	if table == "" {
 		table = c.table
 	}
-	material, err := getKeyMaterial(c.dynamoDB, name, version, table)
+
+	res, err := c.dynamoDB.Query(&dynamodb.QueryInput{
+		TableName: &table,
+		ExpressionAttributeNames: map[string]*string{
+			"#N": aws.String("name"),
+		},
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":name": {
+				S: aws.String(name),
+			},
+		},
+		KeyConditionExpression: aws.String("#N = :name"),
+		Limit:                  aws.Int64(1),
+		ConsistentRead:         aws.Bool(true),
+		ScanIndexForward:       aws.Bool(false), // descending order
+	})
+
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	dataKey, hmacKey, err := decryptKey(c.decrypter, material.Key, ctx)
+	cred := new(Credential)
+
+	if len(res.Items) == 0 {
+		return nil, ErrSecretNotFound
+	}
+
+	err = Decode(res.Items[0], cred)
+
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if err := checkHMAC(material, hmacKey); err != nil {
-		return "", err
+	return c.decryptCredential(cred, encContext)
+}
+
+func (c *Client) GetSecret(name string, table string, paddedVersion string, ctx *EncryptionContextValue) (*DecryptedCredential, error) {
+	log.Printf("Getting secret: %s", name)
+
+	if table == "" {
+		table = c.table
+	}
+	log.Printf("GetSecret Final Table Name: %s", table)
+	params := &dynamodb.GetItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"name":    {S: aws.String(name)},
+			"version": {S: aws.String(paddedVersion)},
+		},
+		TableName: &table,
+	}
+	log.Printf("GetSecret Params: %v", params)
+	res, err := c.dynamoDB.GetItem(params)
+	if err != nil {
+		return nil, err
 	}
 
-	return decryptData(material, dataKey)
+	cred := new(Credential)
+	log.Printf("GetSecret Items Found: %v", res)
+	if len(res.Item) == 0 {
+
+		return nil, ErrSecretNotFound
+	}
+
+	err = Decode(res.Item, cred)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return c.decryptCredential(cred, ctx)
+}
+
+// DecryptDataKey ask kms to decrypt the supplied data key
+func (c *Client) DecryptDataKey(ciphertext []byte, ctx *EncryptionContextValue) (*DataKey, error) {
+
+	params := &kms.DecryptInput{
+		CiphertextBlob:    ciphertext,
+		EncryptionContext: *ctx,
+		GrantTokens:       []*string{},
+	}
+	resp, err := c.decrypter.Decrypt(params)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &DataKey{
+		CiphertextBlob: ciphertext,
+		Plaintext:      resp.Plaintext, // transfer the plain text key after decryption
+	}, nil
 }
 
 func (c *Client) GenerateRandomSecret(length int, useSymbols bool, charsets []interface{}, minRuleMap map[string]interface{}) (string, error) {
@@ -104,21 +231,13 @@ func (c *Client) GenerateRandomSecret(length int, useSymbols bool, charsets []in
 	return value, nil
 }
 
-func (c *Client) PutSecret(tableName string, name string, value string, version string, ctx map[string]*string) error {
+func (c *Client) PutSecret(tableName string, name string, value string, paddedVersion string, ctx *EncryptionContextValue) error {
 	log.Print("Putting secret")
 
 	kmsKey := DefaultKmsKey
 
-	// if alias != "" {
-	// 	kmsKey = alias
-	// }
-
 	if tableName == "" {
 		tableName = c.table
-	}
-
-	if version == "" {
-		version = PaddedInt(1)
 	}
 
 	dk, err := generateDataKey(c.decrypter, kmsKey, ctx, 64)
@@ -143,7 +262,7 @@ func (c *Client) PutSecret(tableName string, name string, value string, version 
 
 	cred := &Credential{
 		Name:      name,
-		Version:   version,
+		Version:   paddedVersion,
 		Key:       base64.StdEncoding.EncodeToString(wrappedKey),
 		Contents:  b64ctext,
 		Hmac:      b64hmac,
@@ -229,7 +348,7 @@ func (c *Client) DeleteSecret(tableName string, name string) error {
 const MaxPaddingLength = 19 // Number of digits in MaxInt64
 
 // PaddedInt returns an integer left-padded with zeroes to the max-int length
-func PaddedInt(i int) string {
+func (c *Client) PaddedInt(i int) string {
 	iString := strconv.Itoa(i)
 	padLength := MaxPaddingLength - len(iString)
 	return strings.Repeat("0", padLength) + strconv.Itoa(i)
@@ -241,7 +360,7 @@ func (c *Client) ResolveVersion(tableName string, name string, version int) (str
 	log.Print("Resolving version")
 
 	if version != 0 {
-		return PaddedInt(version), nil
+		return c.PaddedInt(version), nil
 	}
 
 	if tableName == "" {
@@ -251,7 +370,7 @@ func (c *Client) ResolveVersion(tableName string, name string, version int) (str
 	ver, err := GetHighestVersion(c.dynamoDB, &tableName, name)
 	if err != nil {
 		if err == ErrSecretNotFound {
-			return PaddedInt(1), nil
+			return c.PaddedInt(1), nil
 		}
 		return "", err
 	}
@@ -262,5 +381,5 @@ func (c *Client) ResolveVersion(tableName string, name string, version int) (str
 
 	version++
 
-	return PaddedInt(version), nil
+	return c.PaddedInt(version), nil
 }
