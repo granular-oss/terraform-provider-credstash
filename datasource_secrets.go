@@ -1,18 +1,20 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
 
 	"github.com/granular-oss/terraform-provider-credstash/credstash"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func dataSourceSecret() *schema.Resource {
 	return &schema.Resource{
-		Read: dataSourceSecretRead,
+		ReadContext: dataSourceSecretRead,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -47,7 +49,10 @@ func dataSourceSecret() *schema.Resource {
 	}
 }
 
-func dataSourceSecretRead(d *schema.ResourceData, meta interface{}) error {
+func dataSourceSecretRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
 	client := meta.(*credstash.Client)
 
 	name := d.Get("name").(string)
@@ -63,7 +68,12 @@ func dataSourceSecretRead(d *schema.ResourceData, meta interface{}) error {
 	var value *credstash.DecryptedCredential
 	var err error
 
-	log.Printf("[DEBUG] Getting secret for name=%s table=%s version=%v context=%+v", name, table, version, context)
+	tflog.Debug(ctx, "dataSourceSecretRead getting secret", map[string]interface{}{
+		"name":    name,
+		"version": version,
+		"table":   table,
+		"context": context,
+	})
 
 	if version == 0 {
 		value, err = client.GetHighestVersionSecret(table, name, context)
@@ -73,12 +83,12 @@ func dataSourceSecretRead(d *schema.ResourceData, meta interface{}) error {
 
 	}
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	d.Set("value", value.Secret)
 	d.SetId(hash(value.Secret))
 
-	return nil
+	return diags
 }
 
 func hash(s string) string {

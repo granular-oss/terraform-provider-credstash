@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/granular-oss/terraform-provider-credstash/credstash"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -169,7 +169,12 @@ func resourceSecretRead(ctx context.Context, d *schema.ResourceData, m interface
 	var value *credstash.DecryptedCredential
 	var err error
 
-	log.Printf("[DEBUG] Getting secret for name=%s table=%s version=%v context=%+v", name, table, version, context)
+	tflog.Debug(ctx, "resourceSecretRead getting secret", map[string]interface{}{
+		"name":    name,
+		"version": version,
+		"table":   table,
+		"context": context,
+	})
 
 	if version == 0 {
 		value, err = client.GetHighestVersionSecret(table, name, context)
