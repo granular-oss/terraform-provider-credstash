@@ -25,7 +25,7 @@ release:
 
 integration_test: | install run_integration_test # uninstall
 
-run_integration_test:
+run_integration_test: install
 	@echo "Cleaning Up TF State and Lock Files"
 	@cd test; rm -f .terraform.lock.hcl
 	@cd test; rm -f *.tfstate*
