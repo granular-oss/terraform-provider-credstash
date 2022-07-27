@@ -31,4 +31,4 @@ jobs:
       run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
       if: matrix.os == 'ubuntu-latest'
     - name: Unit Test
-      run: go test -race $(go list ./... |grep -v /test)
+      run: go test -race $(go list ./... |grep -v /integration_test)

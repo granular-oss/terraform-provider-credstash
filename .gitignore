@@ -29,7 +29,7 @@ go.work
 credstash.log
 
 # Ingore test terraform
-test/tf/.terraform
-test/tf/terraform.tfstate*
+integration_test/tf/.terraform
+integration_test/tf/terraform.tfstate*
 #Ignore lock file as we always want integration to install latest provider
-test/tf/.terraform.lock.hcl
+integration_test/tf/.terraform.lock.hcl
