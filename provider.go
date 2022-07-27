@@ -1,22 +1,26 @@
 package main
 
 import (
-	"log"
+	"context"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/granular-oss/terraform-provider-credstash/credstash"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-var _ *schema.Provider = provider()
-
 const defaultAWSProfile = "default"
 
-func provider() *schema.Provider {
+func Provider() *schema.Provider {
+	// rovider that enables reading and creating of secrets with credstash
 	return &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
 			"credstash_secret": dataSourceSecret(),
+		},
+		ResourcesMap: map[string]*schema.Resource{
+			"credstash_secret": resourceSecret(),
 		},
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -42,11 +46,11 @@ func provider() *schema.Provider {
 				Description: "The profile that should be used to connect to AWS",
 			},
 		},
-		ConfigureFunc: providerConfig,
+		ConfigureContextFunc: providerConfig,
 	}
 }
 
-func providerConfig(d *schema.ResourceData) (interface{}, error) {
+func providerConfig(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	region := d.Get("region").(string)
 	table := d.Get("table").(string)
 	profile := d.Get("profile").(string)
@@ -54,7 +58,9 @@ func providerConfig(d *schema.ResourceData) (interface{}, error) {
 	var sess *session.Session
 	var err error
 	if profile != defaultAWSProfile {
-		log.Printf("[DEBUG] creating a session for profile: %s", profile)
+		tflog.Debug(ctx, "Creating AWS Session", map[string]interface{}{
+			"profile": profile,
+		})
 		sess, err = session.NewSessionWithOptions(session.Options{
 			Config:            aws.Config{Region: aws.String(region)},
 			Profile:           profile,
@@ -64,9 +70,11 @@ func providerConfig(d *schema.ResourceData) (interface{}, error) {
 		sess, err = session.NewSession(&aws.Config{Region: aws.String(region)})
 	}
 	if err != nil {
-		return nil, err
+		return nil, diag.FromErr(err)
 	}
+	tflog.Debug(ctx, "Creating Credstash Client", map[string]interface{}{
+		"table": table,
+	})
 
-	log.Printf("[DEBUG] configured credstash for table %s", table)
 	return credstash.New(table, sess), nil
 }
