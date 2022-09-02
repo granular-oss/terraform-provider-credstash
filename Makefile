@@ -32,6 +32,7 @@ run_integration_test: install
 	@echo "Running Intergation Test"
 	@go clean -testcache ./...
 	@rm -rf integration_test/tf/.terraform
+	@pip install credstash
 	go test github.com/granular-oss/terraform-provider-credstash/integration_test
 
 run_integration_test_bash: install
