@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var credstash *credstashCli
+
 func TestMain(m *testing.M) {
 	setup()
 	m.Run()
@@ -18,17 +20,20 @@ func TestMain(m *testing.M) {
 
 func setup() {
 	n := 1
+	credstash = newCredstashCliCustomTable("terraform-provider-credstash-test-table")
+
 	for n < 8 {
-		credstash_delete("terraform-provider-credstash-integration-test-" + strconv.Itoa(n))
+		credstash.delete("terraform-provider-credstash-integration-test-" + strconv.Itoa(n))
 		n += 1
 	}
-	credstash_put("terraform-provider-credstash-integration-test-4", "test-4-1", 0)
-	credstash_put("terraform-provider-credstash-integration-test-4", "test-4-2", 0)
-	credstash_put("terraform-provider-credstash-integration-test-5", "test-5-1", 0)
-	credstash_put("terraform-provider-credstash-integration-test-5", "test-5-2", 0)
-	credstash_put("terraform-provider-credstash-integration-test-7", "test-7-1", 0)
-	credstash_put("terraform-provider-credstash-integration-test-7", "test-7-2", 0)
-	credstash_put("terraform-provider-credstash-integration-test-7", "test-7-3", 0)
+
+	credstash.put("terraform-provider-credstash-integration-test-4", "test-4-1", 0)
+	credstash.put("terraform-provider-credstash-integration-test-4", "test-4-2", 0)
+	credstash.put("terraform-provider-credstash-integration-test-5", "test-5-1", 0)
+	credstash.put("terraform-provider-credstash-integration-test-5", "test-5-2", 0)
+	credstash.put("terraform-provider-credstash-integration-test-7", "test-7-1", 0)
+	credstash.put("terraform-provider-credstash-integration-test-7", "test-7-2", 0)
+	credstash.put("terraform-provider-credstash-integration-test-7", "test-7-3", 0)
 
 	log.Println("\n-----Setup complete-----")
 }
@@ -64,6 +69,7 @@ func TestTerraform(t *testing.T) {
 	//Parse the terraform show output
 	show := terraform.Show(t, terraformOptions)
 	state := parseShowJson(show)
+	log.Println(state)
 
 	// This Run will not return until its parallel subtests complete.
 	// Test terraform state
@@ -109,7 +115,7 @@ func TestTerraform(t *testing.T) {
 func importSecretTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-5 Imported Value Matches credstash latest version
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-5", 2)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-5", 2)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-5"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-5 Imported Version is 0, so we can autoincrementin the future
@@ -127,7 +133,7 @@ func importSecretTest(showState map[string]*tfjson.StateResource) func(*testing.
 func createValueAndVersionTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-1 Imported Value Matches credstash latest version
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-1", 1)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-1", 1)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-1"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-1 Imported Version is 1
@@ -137,7 +143,7 @@ func createValueAndVersionTest(showState map[string]*tfjson.StateResource) func(
 		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-1"].AttributeValues["name"].(string)
 		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-1")
 		// Test that credstash latest version is 1
-		credstashVersion := credstash_latest_version("terraform-provider-credstash-integration-test-1")
+		credstashVersion := credstash.getLatestVersion("terraform-provider-credstash-integration-test-1")
 		assert.Equal(t, credstashVersion, "1")
 	}
 }
@@ -148,7 +154,7 @@ func createValueAndVersionTest(showState map[string]*tfjson.StateResource) func(
 func createGeneratedValueOnlyTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-2 Imported Value Matches credstash latest version
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-2", 1)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-2", 1)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-2"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-2 Imported Version is 0, so we can autoincrementin the future
@@ -158,7 +164,7 @@ func createGeneratedValueOnlyTest(showState map[string]*tfjson.StateResource) fu
 		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-2"].AttributeValues["name"].(string)
 		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-2")
 		// Test that credstash latest version is 1
-		credstashVersion := credstash_latest_version("terraform-provider-credstash-integration-test-2")
+		credstashVersion := credstash.getLatestVersion("terraform-provider-credstash-integration-test-2")
 		assert.Equal(t, credstashVersion, "1")
 	}
 }
@@ -169,7 +175,7 @@ func createGeneratedValueOnlyTest(showState map[string]*tfjson.StateResource) fu
 func createGeneratedValueAndVersionTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-6 Imported Value Matches credstash latest version
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-6", 10)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-6", 10)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-6"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-6 Imported Version is 10
@@ -179,7 +185,7 @@ func createGeneratedValueAndVersionTest(showState map[string]*tfjson.StateResour
 		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-6"].AttributeValues["name"].(string)
 		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-6")
 		// Test that credstash latest version is 10
-		credstashVersion := credstash_latest_version("terraform-provider-credstash-integration-test-6")
+		credstashVersion := credstash.getLatestVersion("terraform-provider-credstash-integration-test-6")
 		assert.Equal(t, credstashVersion, "10")
 	}
 }
@@ -190,7 +196,7 @@ func createGeneratedValueAndVersionTest(showState map[string]*tfjson.StateResour
 func createValueAndNoVersionTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-3 Imported Value Matches credstash latest version
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-3", 1)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-3", 1)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-3"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-3 Imported Version is 0, so we can autoincrementin the future
@@ -200,7 +206,7 @@ func createValueAndNoVersionTest(showState map[string]*tfjson.StateResource) fun
 		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-3"].AttributeValues["name"].(string)
 		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-3")
 		// Test that credstash latest version is 1
-		credstashVersion := credstash_latest_version("terraform-provider-credstash-integration-test-3")
+		credstashVersion := credstash.getLatestVersion("terraform-provider-credstash-integration-test-3")
 		assert.Equal(t, credstashVersion, "1")
 	}
 }
@@ -212,7 +218,7 @@ func datablockNameOnlyTest(showState map[string]*tfjson.StateResource) func(*tes
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-4 Imported Value Matches credstash latest version
 		t.Log(showState)
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-4", 2)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-4", 2)
 		terraformValue := showState["data.credstash_secret.terraform-provider-credstash-integration-test-4"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-4 Imported Version is 0, so we can autoincrementin the future
@@ -231,7 +237,7 @@ func datablockNameAndVersionTest(showState map[string]*tfjson.StateResource) fun
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-7 Imported Value Matches credstash latest version
 		t.Log(showState)
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-7", 2)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-7", 2)
 		terraformValue := showState["data.credstash_secret.terraform-provider-credstash-integration-test-7"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-7 Imported Version is 2
@@ -249,7 +255,7 @@ func datablockNameAndVersionTest(showState map[string]*tfjson.StateResource) fun
 func createValueAndVersionTest2(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-1 Imported Value Matches credstash latest version
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-1", 3)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-1", 3)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-1"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-1 Imported Version is 3
@@ -259,7 +265,7 @@ func createValueAndVersionTest2(showState map[string]*tfjson.StateResource) func
 		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-1"].AttributeValues["name"].(string)
 		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-1")
 		// Test that credstash latest version is 3
-		credstashVersion := credstash_latest_version("terraform-provider-credstash-integration-test-1")
+		credstashVersion := credstash.getLatestVersion("terraform-provider-credstash-integration-test-1")
 		assert.Equal(t, credstashVersion, "3")
 	}
 }
@@ -270,7 +276,7 @@ func createValueAndVersionTest2(showState map[string]*tfjson.StateResource) func
 func createValueAndNoVersionTest2(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-3 Imported Value Matches credstash latest version
-		credstashValue := credstash_get("terraform-provider-credstash-integration-test-3", 2)
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-3", 2)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-3"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-3 Imported Version is 0, so we can autoincrementin the future
@@ -280,7 +286,7 @@ func createValueAndNoVersionTest2(showState map[string]*tfjson.StateResource) fu
 		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-3"].AttributeValues["name"].(string)
 		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-3")
 		// Test that credstash latest version is 2
-		credstashVersion := credstash_latest_version("terraform-provider-credstash-integration-test-3")
+		credstashVersion := credstash.getLatestVersion("terraform-provider-credstash-integration-test-3")
 		assert.Equal(t, credstashVersion, "2")
 	}
 }

@@ -14,6 +14,7 @@ terraform {
 }
 
 provider "credstash" {
+  table  = "terraform-provider-credstash-test-table"
   region = "us-east-1"
 }
 

@@ -4,20 +4,38 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"regexp"
 	"strconv"
-	"strings"
 )
+
+// Instead of specifying the table name for each CLI function, we create an object so we can specify it once
+type credstashCli struct {
+	tableName string
+}
+
+// Create a CLI object with the default table name
+func newCredstashCli() *credstashCli {
+	p := new(credstashCli)
+	p.tableName = "credential-store"
+	return p
+}
+
+// Create a CLI object and specify a custom table name
+func newCredstashCliCustomTable(tableName string) *credstashCli {
+	p := new(credstashCli)
+	p.tableName = tableName
+	return p
+}
 
 /*
 	Put a credstash secret. If version is 0 it will auto increment
 */
-func credstash_put(name string, value string, version int) {
-
-	var args []string
+func (cli *credstashCli) put(name string, value string, version int) {
+	args := []string{"-t", cli.tableName, "put"}
 	if version == 0 {
-		args = []string{"put", "-a", name, value}
+		args = append(args, "-a", name, value)
 	} else {
-		args = []string{"put", "-v", strconv.Itoa(version), name, value}
+		args = append(args, "-v", strconv.Itoa(version), name, value)
 	}
 
 	out, err := exec.Command("credstash", args...).Output()
@@ -32,8 +50,8 @@ func credstash_put(name string, value string, version int) {
 /*
 	Delete a credstash secret. Will Delete all version
 */
-func credstash_delete(name string) {
-	args := []string{"delete", name}
+func (cli *credstashCli) delete(name string) {
+	args := []string{"-t", cli.tableName, "delete", name}
 
 	out, err := exec.Command("credstash", args...).Output()
 
@@ -47,18 +65,19 @@ func credstash_delete(name string) {
 /*
 	Get a credstash secret. If version is 0 it will pull latest version
 */
-func credstash_get(name string, version int) string {
-
-	var args []string
+func (cli *credstashCli) get(name string, version int) string {
+	args := []string{"-t", cli.tableName, "get", "-n"}
 	if version == 0 {
-		args = []string{"get", "-n", name}
+		args = append(args, name)
 	} else {
-		args = []string{"get", "-n", "-v", strconv.Itoa(version), name}
+		args = append(args, "-v", strconv.Itoa(version), name)
 	}
 
 	out, err := exec.Command("credstash", args...).Output()
 
 	if err != nil {
+		log.Println(args)
+		log.Println(out)
 		log.Fatal(err)
 	}
 
@@ -69,14 +88,18 @@ func credstash_get(name string, version int) string {
 /*
 	Get the last version number of a secret from credstash
 */
-func credstash_latest_version(name string) string {
-	cmdString := "credstash list | grep " + name + " | tail -1 | sed --regexp-extended 's/.*?version 0*([1-9][0-9]*).*/\\1/'"
-
+func (cli *credstashCli) getLatestVersion(name string) string {
+	// cmdString := "credstash -t " + cli.tableName + " list | grep " + name + " | tail -1 | sed --regexp-extended 's/.*?version 0*([1-9][0-9]*).*/\\1/'"
+	cmdString := "credstash -t " + cli.tableName + " list | grep " + name + " | tail -1"
 	out, err := exec.Command("bash", "-c", cmdString).Output()
+	re := regexp.MustCompile(`.*?version 0*([1-9][0-9]*).*`)
+	version := re.FindStringSubmatch(string(out))
 	if err != nil {
+		log.Println(out)
+		log.Println(version)
 		log.Fatal(err)
 	}
-	outString := strings.TrimSpace(string(out))
+	outString := version[1]
 	fmt.Println(outString)
 	return string(outString)
 

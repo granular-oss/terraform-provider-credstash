@@ -1,6 +1,9 @@
 VERSION := "0.0.0-alpha.1"
 OS = ${shell uname | tr [:upper:] [:lower:]}
 ARCH = ${shell uname -m | tr [:upper:] [:lower:]}
+ifeq ($(ARCH), x86_64)
+	ARCH = amd64
+endif
 
 build:
 	@echo "Building go package"
@@ -28,6 +31,7 @@ integration_test: | install run_integration_test # uninstall
 run_integration_test: install
 	@echo "Running Intergation Test"
 	@go clean -testcache ./...
+	@rm -r integration_test/tf/.terraform
 	go test github.com/granular-oss/terraform-provider-credstash/integration_test
 
 run_integration_test_bash: install
