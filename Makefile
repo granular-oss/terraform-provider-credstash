@@ -33,7 +33,7 @@ run_integration_test: install
 	@go clean -testcache ./...
 	@rm -rf integration_test/tf/.terraform
 	pip3 install credstash
-	go test github.com/granular-oss/terraform-provider-credstash/integration_test
+	go test github.com/granular-oss/terraform-provider-credstash/integration_test -v
 
 run_integration_test_bash: install
 	@echo "Cleaning Up TF State and Lock Files"
