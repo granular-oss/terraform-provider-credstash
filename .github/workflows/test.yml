@@ -32,3 +32,5 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
     - name: Unit Test
       run: go test -race $(go list ./... |grep -v /integration_test)
+    - name: Integration Tests
+      run: make run_integration_test
