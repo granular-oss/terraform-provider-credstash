@@ -52,14 +52,12 @@ func (cli *credstashCli) put(name string, value string, version int) {
 */
 func (cli *credstashCli) delete(name string) {
 	args := []string{"-t", cli.tableName, "delete", name}
-
 	out, err := exec.Command("credstash", args...).Output()
 
 	if err != nil {
+		log.Println(out)
 		log.Fatal(err)
 	}
-
-	fmt.Println(string(out))
 }
 
 /*
