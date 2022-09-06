@@ -21,6 +21,7 @@ func TestMain(m *testing.M) {
 func setup() {
 	log.Println("\n-----Starting setup-----")
 	n := 1
+	log.Println("Testing with credstash CLI.")
 	credstash = newCredstashCliCustomTable("terraform-provider-credstash-test-table")
 	log.Println("Cleaning up previously added credstash keys...")
 	for n < 8 {
