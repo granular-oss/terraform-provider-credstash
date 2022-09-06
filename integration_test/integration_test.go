@@ -19,6 +19,7 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
+	log.Println("\n-----Starting setup-----")
 	n := 1
 	credstash = newCredstashCliCustomTable("terraform-provider-credstash-test-table")
 
