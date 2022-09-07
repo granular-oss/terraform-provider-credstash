@@ -33,6 +33,7 @@ run_integration_test: install
 	@go clean -testcache ./...
 	@rm -rf integration_test/tf/.terraform
 	pip3 install credstash
+	
 	aws sts get-caller-identity --no-cli-pager
 	go test github.com/granular-oss/terraform-provider-credstash/integration_test -v
 
