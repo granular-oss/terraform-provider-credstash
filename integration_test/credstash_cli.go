@@ -28,7 +28,7 @@ func newCredstashCliCustomTable(tableName string) *credstashCli {
 }
 
 func (cli *credstashCli) list() {
-	args := []string{"-t", cli.tableName, "list"}
+	args := []string{"-r", "us-east-1", "-t", cli.tableName, "list"}
 	out, err := exec.Command("credstash", args...).CombinedOutput()
 	fmt.Println("ran credstash")
 	if err != nil {
