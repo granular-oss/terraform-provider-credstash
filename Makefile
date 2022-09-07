@@ -18,6 +18,8 @@ install: build
 	@rm -f ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH)/terraform-provider-credstash
 	@cp terraform-provider-credstash ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH)
 	@ls -alh ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash
+	@ls -alh ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/
+	@ls -alh ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH)/
 
 uninstall: 
 	@echo "Uninstalling TF Plugin locally"
