@@ -27,6 +27,18 @@ func newCredstashCliCustomTable(tableName string) *credstashCli {
 	return p
 }
 
+func (cli *credstashCli) list() {
+	args := []string{"-t", cli.tableName, "list"}
+	out, err := exec.Command("credstash", args...).CombinedOutput()
+	fmt.Println("ran credstash")
+	if err != nil {
+		log.Println(string(out))
+		log.Fatal(err)
+	}
+
+	fmt.Print(string(out))
+}
+
 /*
 	Put a credstash secret. If version is 0 it will auto increment
 */
@@ -52,10 +64,10 @@ func (cli *credstashCli) put(name string, value string, version int) {
 */
 func (cli *credstashCli) delete(name string) {
 	args := []string{"-t", cli.tableName, "delete", name}
-	out, err := exec.Command("credstash", args...).Output()
+	out, err := exec.Command("credstash", args...).CombinedOutput()
 
 	if err != nil {
-		log.Println(out)
+		log.Println(string(out))
 		log.Fatal(err)
 	}
 }

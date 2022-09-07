@@ -24,6 +24,7 @@ func setup() {
 	log.Println("Testing with credstash CLI.")
 	credstash = newCredstashCliCustomTable("terraform-provider-credstash-test-table")
 	log.Println("Cleaning up previously added credstash keys...")
+	credstash.list()
 	for n < 8 {
 		credstash.delete("terraform-provider-credstash-integration-test-" + strconv.Itoa(n))
 		n += 1
