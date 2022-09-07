@@ -22,11 +22,9 @@ install: build
 	@echo "Installing TF Plugin locally"
 	@mkdir -p ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH)
 	@rm -f ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH)/terraform-provider-credstash
-	ifeq ($(OS), windows)
-		@cp terraform-provider-credstash ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH).exe
-	else
-		@cp terraform-provider-credstash ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH)
-	endif
+	@cp terraform-provider-credstash ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH).exe
+	@cp terraform-provider-credstash ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH)
+	@ls -alh .
 	@ls -alh ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash
 	@ls -alh ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/
 	@ls -alh ~/.terraform.d/plugins/registry.terraform.io/granular-oss/credstash/$(VERSION)/$(OS)_$(ARCH)/
