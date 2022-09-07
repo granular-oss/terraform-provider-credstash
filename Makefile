@@ -1,8 +1,14 @@
 VERSION := "0.0.0-alpha.1"
 OS = ${shell uname | tr [:upper:] [:lower:]}
 ARCH = ${shell uname -m | tr [:upper:] [:lower:]}
+# On MacOS, Terraform expects amd64
 ifeq ($(ARCH), x86_64)
 	ARCH = amd64
+endif
+
+# On Windows, Terraform expects windows_amd64
+ifneq (,$(findstring mingw64,$(OS)))
+    OS = windows
 endif
 
 build:
