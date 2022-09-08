@@ -75,7 +75,6 @@ func TestTerraform(t *testing.T) {
 	//Parse the terraform show output
 	show := terraform.Show(t, terraformOptions)
 	state := parseShowJson(show)
-	log.Println(state)
 
 	// This Run will not return until its parallel subtests complete.
 	// Test terraform state

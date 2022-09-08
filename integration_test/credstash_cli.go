@@ -36,7 +36,7 @@ func (cli *credstashCli) list() {
 		log.Fatal(err)
 	}
 
-	fmt.Print(string(out))
+	log.Print(string(out))
 }
 
 /*
@@ -53,10 +53,9 @@ func (cli *credstashCli) put(name string, value string, version int) {
 	out, err := exec.Command("credstash", args...).Output()
 
 	if err != nil {
+		log.Println(string(out))
 		log.Fatal(err)
 	}
-
-	fmt.Println(string(out))
 }
 
 /*
@@ -91,7 +90,6 @@ func (cli *credstashCli) get(name string, version int) string {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(out))
 	return string(out)
 }
 
