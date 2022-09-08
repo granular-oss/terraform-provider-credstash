@@ -1,7 +1,6 @@
 terraform {
   required_providers {
     credstash = {
-      version = "0.0.0-alpha.1"
       source  = "granular-oss/credstash"
     }
   }

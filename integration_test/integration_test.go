@@ -51,6 +51,9 @@ func TestTerraform(t *testing.T) {
 	// retryable errors in terraform testing.
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./tf/",
+		EnvVars: map[string]string{
+			"TF_CLI_CONFIG_FILE": "dev.tfrc",
+		},
 		Vars: map[string]interface{}{
 			"secret_1_version": 1,
 			"secret_1":         "IAmABadPassword1",
@@ -89,6 +92,9 @@ func TestTerraform(t *testing.T) {
 	// Update Password Variables
 	terraformOptions = terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: "./tf/",
+		EnvVars: map[string]string{
+			"TF_CLI_CONFIG_FILE": "dev.tfrc",
+		},
 		Vars: map[string]interface{}{
 			"secret_1_version": 3,
 			"secret_1":         "IAmABadPassword3",
