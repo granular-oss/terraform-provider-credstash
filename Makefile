@@ -10,7 +10,7 @@ endif
 # On Windows, Terraform expects windows_amd64
 ifneq (,$(findstring mingw64,$(OS)))
     OS = windows
-	PLUGIN_BINARY_NAME = $(PLUGIN_BINARY_NAME).exe
+	PLUGIN_BINARY_NAME := $(PLUGIN_BINARY_NAME).exe
 endif
 
 build:
