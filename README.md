@@ -22,7 +22,7 @@ That repo is forked from https://github.com/sspinc/terraform-provider-credstash
 
 4. Profit
 
-### From source
+### Install from source
 
     $ git clone https://github.com/granular-oss/terraform-provider-credstash.git
     $ cd /path/to/terraform-provider-credstash
