@@ -37,7 +37,7 @@ jobs:
       run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
       if: matrix.os == 'ubuntu-latest'
     - name: Unit Test
-      run: go test -race $(go list ./... |grep -v /integration_test)
+      run: make test
     - name: Integration Tests
       env:
         AWS_DEFAULT_REGION: us-east-1
