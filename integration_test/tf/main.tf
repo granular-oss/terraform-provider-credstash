@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     credstash = {
-      source  = "granular-oss/credstash"
+      source = "granular-oss/credstash"
     }
   }
 
@@ -74,4 +74,11 @@ resource "credstash_secret" "terraform-provider-credstash-integration-test-6" {
 data "credstash_secret" "terraform-provider-credstash-integration-test-7" {
   name    = "terraform-provider-credstash-integration-test-7"
   version = 2
+}
+
+resource "credstash_secret" "terraform-provider-credstash-integration-test-8" {
+  name = "terraform-provider-credstash-integration-test-8"
+  generate {
+    length = 10
+  }
 }
