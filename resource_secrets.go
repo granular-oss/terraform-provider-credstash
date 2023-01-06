@@ -42,19 +42,19 @@ func resourceSecret() *schema.Resource {
 				Description: "encryption context for the secret",
 			},
 			"value": {
-				Type:          schema.TypeString,
-				Computed:      true,
-				Optional:      true,
-				Sensitive:     true,
-				ConflictsWith: []string{"generate"},
-				Description:   "The secret contents. Either `value` or `generate` must be defined.",
+				Type:         schema.TypeString,
+				Computed:     true,
+				Optional:     true,
+				Sensitive:    true,
+				ExactlyOneOf: []string{"value", "generate"},
+				Description:  "The secret contents. Either `value` or `generate` must be defined.",
 			},
 			"generate": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				MaxItems:      1,
-				Description:   "Settings for autogenerating a secret. Either `value` or `generate` must be defined.",
-				ConflictsWith: []string{"value"},
+				Type:         schema.TypeList,
+				Optional:     true,
+				MaxItems:     1,
+				Description:  "Settings for autogenerating a secret. Either `value` or `generate` must be defined.",
+				ExactlyOneOf: []string{"value", "generate"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"length": {
@@ -232,6 +232,11 @@ func resourceSecretUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 		if value == "" && len(generateList) == 0 {
 			return diag.FromErr(fmt.Errorf("either 'value' or 'generate' must be specified"))
 		}
+
+		// old_gen, _ := d.GetChange("generate")
+		// if !d.HasChange("value") && value != "" && old_gen == nil {
+		// 	return resourceSecretRead(ctx, d, m)
+		// }
 
 		context := credstash.NewEncryptionContextValue()
 		for k, v := range d.Get("context").(map[string]interface{}) {

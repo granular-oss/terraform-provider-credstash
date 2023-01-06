@@ -33,3 +33,4 @@ integration_test/tf/.terraform
 integration_test/tf/terraform.tfstate*
 #Ignore lock file as we always want integration to install latest provider
 integration_test/tf/.terraform.lock.hcl
+integration_test/tf/providers
