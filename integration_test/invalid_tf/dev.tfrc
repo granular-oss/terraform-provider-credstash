@@ -1,8 +1,8 @@
 provider_installation {
 
   # Use ./providers as an overridden package directory
-  # for the granular-oss/credstash provider. This disables the version and
-  # checksum verifications for this provider and forces Terraform to look for
+  # for the granular-oss/credstash provider. This disables the version and 
+  # checksum verifications for this provider and forces Terraform to look for 
   # the null provider plugin in the given directory.
   dev_overrides {
     "granular-oss/credstash" = "./providers"

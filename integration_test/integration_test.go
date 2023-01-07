@@ -3,6 +3,7 @@ package test
 import (
 	"log"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -159,7 +160,7 @@ func importSecretGenerateTest(showState map[string]*tfjson.StateResource) func(*
 		terraformVersion := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["version"].(float64)
 		assert.Equal(t, terraformVersion, float64(0))
 		// Test terraform-provider-credstash-integration-test-5 Imported Name is correct
-		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-9"].AttributeValues["name"].(string)
+		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["name"].(string)
 		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-8")
 	}
 }
@@ -325,5 +326,35 @@ func createValueAndNoVersionTest2(showState map[string]*tfjson.StateResource) fu
 		// Test that credstash latest version is 2
 		credstashVersion := credstash.getLatestVersion("terraform-provider-credstash-integration-test-3")
 		assert.Equal(t, credstashVersion, "2")
+	}
+}
+func TestTerraformInvalid(t *testing.T) {
+	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+		TerraformDir: "./invalid_tf",
+		EnvVars: map[string]string{
+			"TF_CLI_CONFIG_FILE": "dev.tfrc",
+		},
+	})
+
+	terraform.Init(t, terraformOptions)
+	consoleOut, err := terraform.PlanE(t, terraformOptions)
+
+	t.Run("group", func(t *testing.T) {
+		t.Run("TestBothGenerateAndValueMustNotBeSet", bothGenerateAndValueMustNotBeSet(consoleOut, err))
+		t.Run("TestGenerateOrValueMustBeSet", generateOrValueMustBeSet(consoleOut, err))
+	})
+}
+func bothGenerateAndValueMustNotBeSet(consoleOut string, err error) func(*testing.T) {
+	return func(t *testing.T) {
+		assert.NotNil(t, err)
+		assert.True(t, strings.Contains(consoleOut, "\"generate\": only one of `generate,value` can be specified, but"))
+		assert.True(t, strings.Contains(consoleOut, "`generate,value` were specified."))
+	}
+}
+
+func generateOrValueMustBeSet(consoleOut string, err error) func(*testing.T) {
+	return func(t *testing.T) {
+		assert.NotNil(t, err)
+		assert.True(t, strings.Contains(consoleOut, "\"generate\": one of `generate,value` must be specified"))
 	}
 }

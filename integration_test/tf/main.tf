@@ -33,10 +33,7 @@ variable "secret_5" {
 }
 
 resource "credstash_secret" "terraform-provider-credstash-integration-test-1" {
-  name = "terraform-provider-credstash-integration-test-1"
-  # generate {
-  #   length = 10
-  # }
+  name    = "terraform-provider-credstash-integration-test-1"
   value   = var.secret_1
   version = var.secret_1_version
 }
@@ -79,6 +76,6 @@ data "credstash_secret" "terraform-provider-credstash-integration-test-7" {
 resource "credstash_secret" "terraform-provider-credstash-integration-test-8" {
   name = "terraform-provider-credstash-integration-test-8"
   generate {
-    length = 10
+    length = 8
   }
 }

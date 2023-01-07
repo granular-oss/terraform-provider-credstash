@@ -24,6 +24,8 @@ install: uninstall build
 	@echo "Installing TF Plugin locally"
 	@mkdir -p integration_test/tf/providers/
 	@cp terraform-provider-credstash integration_test/tf/providers/$(PLUGIN_BINARY_NAME)
+	@mkdir -p integration_test/invalid_tf/providers/
+	@cp terraform-provider-credstash integration_test/invalid_tf/providers/$(PLUGIN_BINARY_NAME)
 
 uninstall:
 	@echo "Uninstalling TF Plugin locally"
@@ -38,6 +40,9 @@ run_integration_test: install
 	@go clean -testcache ./...
 	@rm -rf integration_test/tf/.terraform
 	@rm -rf integration_test/tf/.terraform.lock.hcl
+	@rm -rf integration_test/invalid_tf/.terraform
+	@rm -rf integration_test/invalid_tf/.terraform.lock.hcl
 	pip3 install credstash
 	go test github.com/granular-oss/terraform-provider-credstash/integration_test
 	@rm -rf integration_test/tf/providers/
+	@rm -rf integration_test/invalid_tf/providers/
