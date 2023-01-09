@@ -31,5 +31,10 @@ credstash.log
 # Ingore test terraform
 integration_test/tf/.terraform
 integration_test/tf/terraform.tfstate*
+integration_test/invalid_tf/.terraform
+integration_test/invalid_tf/terraform.tfstate*
 #Ignore lock file as we always want integration to install latest provider
 integration_test/tf/.terraform.lock.hcl
+integration_test/invalid_tf/.terraform.lock.hcl
+integration_test/tf/providers
+integration_test/invalid_tf/providers

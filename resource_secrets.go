@@ -42,19 +42,18 @@ func resourceSecret() *schema.Resource {
 				Description: "encryption context for the secret",
 			},
 			"value": {
-				Type:          schema.TypeString,
-				Computed:      true,
-				Optional:      true,
-				Sensitive:     true,
-				ConflictsWith: []string{"generate"},
-				Description:   "The secret contents. Either `value` or `generate` must be defined.",
+				Type:        schema.TypeString,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   true,
+				Description: "The secret contents. Either `value` or `generate` must be defined.",
 			},
 			"generate": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				MaxItems:      1,
-				Description:   "Settings for autogenerating a secret. Either `value` or `generate` must be defined.",
-				ConflictsWith: []string{"value"},
+				Type:         schema.TypeList,
+				Optional:     true,
+				MaxItems:     1,
+				Description:  "Settings for autogenerating a secret. Either `value` or `generate` must be defined.",
+				ExactlyOneOf: []string{"generate", "value"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"length": {
@@ -85,7 +84,7 @@ func resourceSecret() *schema.Resource {
 			},
 		},
 		Importer: &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
+			StateContext: resourceSecretStateImporter,
 		},
 	}
 }
@@ -191,7 +190,16 @@ func resourceSecretRead(ctx context.Context, d *schema.ResourceData, m interface
 	d.Set("table", table)
 	d.Set("version", version)
 	d.Set("name", name)
-	d.Set("generate", d.Get("generate"))
+
+	generateList := d.Get("generate").([]interface{})
+	if len(generateList) > 0 {
+		tflog.Warn(ctx, "setting generate length")
+		settings := generateList[0].(map[string]interface{})
+		settings["length"] = len(value.Secret)
+		d.Set("generate", generateList)
+	} else {
+		d.Set("generate", d.Get("generate"))
+	}
 
 	return diags
 }
@@ -278,4 +286,12 @@ func resourceSecretUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 	}
 
 	return resourceSecretRead(ctx, d, m)
+}
+
+func resourceSecretStateImporter(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+	generateSettings := map[string]interface{}{
+		"use_symbols": true,
+	}
+	d.Set("generate", append(make([]interface{}, 0), generateSettings))
+	return []*schema.ResourceData{d}, nil
 }

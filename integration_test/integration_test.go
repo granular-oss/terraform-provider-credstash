@@ -3,6 +3,7 @@ package test
 import (
 	"log"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -25,7 +26,7 @@ func setup() {
 	credstash = newCredstashCliCustomTable("terraform-provider-credstash-test-table")
 	log.Println("Cleaning up previously added credstash keys...")
 	credstash.list()
-	for n < 8 {
+	for n < 9 {
 		credstash.delete("terraform-provider-credstash-integration-test-" + strconv.Itoa(n))
 		n += 1
 	}
@@ -37,6 +38,8 @@ func setup() {
 	credstash.put("terraform-provider-credstash-integration-test-7", "test-7-1", 0)
 	credstash.put("terraform-provider-credstash-integration-test-7", "test-7-2", 0)
 	credstash.put("terraform-provider-credstash-integration-test-7", "test-7-3", 0)
+	credstash.put("terraform-provider-credstash-integration-test-8", "test-8-1", 0)
+	credstash.put("terraform-provider-credstash-integration-test-8", "test-8-2", 0)
 
 	log.Println("\n-----Setup complete-----")
 }
@@ -66,10 +69,16 @@ func TestTerraform(t *testing.T) {
 
 	terraform.Init(t, terraformOptions)
 
-	// Import credstash key into terraform
+	// Import credstash key with value into terraform
 	args := terraform.FormatArgs(terraformOptions, "import")
 	args = append(args, "credstash_secret.terraform-provider-credstash-integration-test-5", "terraform-provider-credstash-integration-test-5")
 	terraform.RunTerraformCommand(t, terraformOptions, args...)
+
+	// Import credstash key with generate into terraform
+	args2 := terraform.FormatArgs(terraformOptions, "import")
+	args2 = append(args2, "credstash_secret.terraform-provider-credstash-integration-test-8", "terraform-provider-credstash-integration-test-8")
+	terraform.RunTerraformCommand(t, terraformOptions, args2...)
+
 	//Apply Terraform and Test Apply is Idempotent
 	terraform.ApplyAndIdempotent(t, terraformOptions)
 	//Parse the terraform show output
@@ -79,7 +88,8 @@ func TestTerraform(t *testing.T) {
 	// This Run will not return until its parallel subtests complete.
 	// Test terraform state
 	t.Run("group", func(t *testing.T) {
-		t.Run("TestSecretImport", importSecretTest(state))
+		t.Run("TestSecretValueImport", importSecretValueTest(state))
+		t.Run("TestSecretGenerateImport", importSecretGenerateTest(state))
 		t.Run("createValueAndVersionTest", createValueAndVersionTest(state))
 		t.Run("createGeneratedValueOnlyTest", createGeneratedValueOnlyTest(state))
 		t.Run("createGeneratedValueAndVersionTest", createGeneratedValueAndVersionTest(state))
@@ -118,13 +128,15 @@ func TestTerraform(t *testing.T) {
 }
 
 /*
-	Test the imported credstash secret
+	Test the imported credstash secret with value
 */
-func importSecretTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
+func importSecretValueTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
 		//Test terraform-provider-credstash-integration-test-5 Imported Value Matches credstash latest version
 		credstashValue := credstash.get("terraform-provider-credstash-integration-test-5", 2)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-5"].AttributeValues["value"].(string)
+		log.Println(credstashValue)
+		log.Println(terraformValue)
 		assert.Equal(t, terraformValue, credstashValue)
 		// Test terraform-provider-credstash-integration-test-5 Imported Version is 0, so we can autoincrementin the future
 		terraformVersion := showState["credstash_secret.terraform-provider-credstash-integration-test-5"].AttributeValues["version"].(float64)
@@ -132,6 +144,28 @@ func importSecretTest(showState map[string]*tfjson.StateResource) func(*testing.
 		// Test terraform-provider-credstash-integration-test-5 Imported Name is correct
 		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-5"].AttributeValues["name"].(string)
 		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-5")
+	}
+}
+
+/*
+	Test the imported credstash secret with generate
+*/
+func importSecretGenerateTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
+	return func(t *testing.T) {
+		//Test terraform-provider-credstash-integration-test-5 Imported Value Matches credstash latest version
+		credstashValue := credstash.get("terraform-provider-credstash-integration-test-8", 2)
+		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["value"].(string)
+		assert.Equal(t, terraformValue, credstashValue)
+		//Test terraform-provider-credstash-integration-test-5 length matches expected value
+		terraformLength := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["generate"].([]interface{})[0].(map[string]interface{})["length"].(float64)
+		assert.Equal(t, terraformLength, float64(8))
+
+		// Test terraform-provider-credstash-integration-test-5 Imported Version is 0, so we can autoincrementin the future
+		terraformVersion := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["version"].(float64)
+		assert.Equal(t, terraformVersion, float64(0))
+		// Test terraform-provider-credstash-integration-test-5 Imported Name is correct
+		terraformName := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["name"].(string)
+		assert.Equal(t, terraformName, "terraform-provider-credstash-integration-test-8")
 	}
 }
 
@@ -296,5 +330,35 @@ func createValueAndNoVersionTest2(showState map[string]*tfjson.StateResource) fu
 		// Test that credstash latest version is 2
 		credstashVersion := credstash.getLatestVersion("terraform-provider-credstash-integration-test-3")
 		assert.Equal(t, credstashVersion, "2")
+	}
+}
+func TestTerraformInvalid(t *testing.T) {
+	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+		TerraformDir: "./invalid_tf",
+		EnvVars: map[string]string{
+			"TF_CLI_CONFIG_FILE": "dev.tfrc",
+		},
+	})
+
+	terraform.Init(t, terraformOptions)
+	consoleOut, err := terraform.PlanE(t, terraformOptions)
+
+	t.Run("group", func(t *testing.T) {
+		t.Run("TestBothGenerateAndValueMustNotBeSet", bothGenerateAndValueMustNotBeSet(consoleOut, err))
+		t.Run("TestGenerateOrValueMustBeSet", generateOrValueMustBeSet(consoleOut, err))
+	})
+}
+func bothGenerateAndValueMustNotBeSet(consoleOut string, err error) func(*testing.T) {
+	return func(t *testing.T) {
+		assert.NotNil(t, err)
+		assert.True(t, strings.Contains(consoleOut, "\"generate\": only one of `generate,value` can be specified, but"))
+		assert.True(t, strings.Contains(consoleOut, "`generate,value` were specified."))
+	}
+}
+
+func generateOrValueMustBeSet(consoleOut string, err error) func(*testing.T) {
+	return func(t *testing.T) {
+		assert.NotNil(t, err)
+		assert.True(t, strings.Contains(consoleOut, "\"generate\": one of `generate,value` must be specified"))
 	}
 }
