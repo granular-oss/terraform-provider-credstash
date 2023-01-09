@@ -156,6 +156,10 @@ func importSecretGenerateTest(showState map[string]*tfjson.StateResource) func(*
 		credstashValue := credstash.get("terraform-provider-credstash-integration-test-8", 2)
 		terraformValue := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["value"].(string)
 		assert.Equal(t, terraformValue, credstashValue)
+		//Test terraform-provider-credstash-integration-test-5 length matches expected value
+		terraformLength := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["generate"].([]interface{})[0].(map[string]interface{})["length"].(float64)
+		assert.Equal(t, terraformLength, float64(8))
+
 		// Test terraform-provider-credstash-integration-test-5 Imported Version is 0, so we can autoincrementin the future
 		terraformVersion := showState["credstash_secret.terraform-provider-credstash-integration-test-8"].AttributeValues["version"].(float64)
 		assert.Equal(t, terraformVersion, float64(0))
