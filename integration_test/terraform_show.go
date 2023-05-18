@@ -8,7 +8,7 @@ import (
 )
 
 /*
-	Parse the terraform show output, and marshal into a StateResource
+Parse the terraform show output, and marshal into a StateResource
 */
 func parseShowJson(jsonStr string) map[string]*tfjson.StateResource {
 	plan := &tfjson.State{}
