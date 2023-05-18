@@ -47,6 +47,7 @@ func resourceSecret() *schema.Resource {
 				Optional:    true,
 				Sensitive:   true,
 				Description: "The secret contents. Either `value` or `generate` must be defined.",
+				ExactlyOneOf: []string{"generate", "value"},
 			},
 			"generate": {
 				Type:         schema.TypeList,
