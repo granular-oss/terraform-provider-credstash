@@ -25,6 +25,9 @@ go.work
 # Ignore vscode
 .vscode
 
+# Ignore intellij
+.idea
+
 # Ignore credstash.log
 credstash.log
 
