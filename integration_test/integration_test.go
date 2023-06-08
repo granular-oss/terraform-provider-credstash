@@ -128,7 +128,7 @@ func TestTerraform(t *testing.T) {
 }
 
 /*
-	Test the imported credstash secret with value
+Test the imported credstash secret with value
 */
 func importSecretValueTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -148,7 +148,7 @@ func importSecretValueTest(showState map[string]*tfjson.StateResource) func(*tes
 }
 
 /*
-	Test the imported credstash secret with generate
+Test the imported credstash secret with generate
 */
 func importSecretGenerateTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -170,7 +170,7 @@ func importSecretGenerateTest(showState map[string]*tfjson.StateResource) func(*
 }
 
 /*
-	Test credstash resource creation that specifies a value and version
+Test credstash resource creation that specifies a value and version
 */
 func createValueAndVersionTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -191,7 +191,7 @@ func createValueAndVersionTest(showState map[string]*tfjson.StateResource) func(
 }
 
 /*
-	Test credstash resource creation that autogenerate a value
+Test credstash resource creation that autogenerate a value
 */
 func createGeneratedValueOnlyTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -212,7 +212,7 @@ func createGeneratedValueOnlyTest(showState map[string]*tfjson.StateResource) fu
 }
 
 /*
-	Test credstash resource creation that auto generates a value and specifies a version
+Test credstash resource creation that auto generates a value and specifies a version
 */
 func createGeneratedValueAndVersionTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -233,7 +233,7 @@ func createGeneratedValueAndVersionTest(showState map[string]*tfjson.StateResour
 }
 
 /*
-	Test credstash resource creation that specifies a value without a version
+Test credstash resource creation that specifies a value without a version
 */
 func createValueAndNoVersionTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -254,7 +254,7 @@ func createValueAndNoVersionTest(showState map[string]*tfjson.StateResource) fun
 }
 
 /*
-	Test credstash data read that specifies a name only
+Test credstash data read that specifies a name only
 */
 func datablockNameOnlyTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -273,7 +273,7 @@ func datablockNameOnlyTest(showState map[string]*tfjson.StateResource) func(*tes
 }
 
 /*
-	Test credstash data read that specifies a name and version
+Test credstash data read that specifies a name and version
 */
 func datablockNameAndVersionTest(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -292,7 +292,7 @@ func datablockNameAndVersionTest(showState map[string]*tfjson.StateResource) fun
 }
 
 /*
-	This Test Runs after we apply a new password and version. Test that the resource updates the version and value
+This Test Runs after we apply a new password and version. Test that the resource updates the version and value
 */
 func createValueAndVersionTest2(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {
@@ -313,7 +313,7 @@ func createValueAndVersionTest2(showState map[string]*tfjson.StateResource) func
 }
 
 /*
-	This Test Runs after we apply a new password. Test that the resource updates the value
+This Test Runs after we apply a new password. Test that the resource updates the value
 */
 func createValueAndNoVersionTest2(showState map[string]*tfjson.StateResource) func(*testing.T) {
 	return func(t *testing.T) {

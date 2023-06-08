@@ -42,11 +42,12 @@ func resourceSecret() *schema.Resource {
 				Description: "encryption context for the secret",
 			},
 			"value": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Optional:    true,
-				Sensitive:   true,
-				Description: "The secret contents. Either `value` or `generate` must be defined.",
+				Type:         schema.TypeString,
+				Computed:     true,
+				Optional:     true,
+				Sensitive:    true,
+				Description:  "The secret contents. Either `value` or `generate` must be defined.",
+				ExactlyOneOf: []string{"generate", "value"},
 			},
 			"generate": {
 				Type:         schema.TypeList,

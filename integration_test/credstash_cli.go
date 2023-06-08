@@ -40,7 +40,7 @@ func (cli *credstashCli) list() {
 }
 
 /*
-	Put a credstash secret. If version is 0 it will auto increment
+Put a credstash secret. If version is 0 it will auto increment
 */
 func (cli *credstashCli) put(name string, value string, version int) {
 	args := []string{"-t", cli.tableName, "put"}
@@ -59,7 +59,7 @@ func (cli *credstashCli) put(name string, value string, version int) {
 }
 
 /*
-	Delete a credstash secret. Will Delete all version
+Delete a credstash secret. Will Delete all version
 */
 func (cli *credstashCli) delete(name string) {
 	args := []string{"-t", cli.tableName, "delete", name}
@@ -72,7 +72,7 @@ func (cli *credstashCli) delete(name string) {
 }
 
 /*
-	Get a credstash secret. If version is 0 it will pull latest version
+Get a credstash secret. If version is 0 it will pull latest version
 */
 func (cli *credstashCli) get(name string, version int) string {
 	args := []string{"-t", cli.tableName, "get", "-n"}
@@ -94,7 +94,7 @@ func (cli *credstashCli) get(name string, version int) string {
 }
 
 /*
-	Get the last version number of a secret from credstash
+Get the last version number of a secret from credstash
 */
 func (cli *credstashCli) getLatestVersion(name string) string {
 	// cmdString := "credstash -t " + cli.tableName + " list | grep " + name + " | tail -1 | sed --regexp-extended 's/.*?version 0*([1-9][0-9]*).*/\\1/'"
