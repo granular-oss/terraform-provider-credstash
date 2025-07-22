@@ -1,3 +1,7 @@
+## v0.7.2 (07 22, 2025)
+
+- Add import documentation.
+
 ## v0.7.1 (01 06, 2022)
 
 - Fix credstash resource read to set the length of generate config to the length of the value retrieved from table. Also set import to default update generated values to default config for `use_symbols`
