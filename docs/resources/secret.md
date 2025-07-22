@@ -60,4 +60,19 @@ Optional:
 - `min` (Map of Number) Ensure that the generated secret contains at least n characters from the given character set. Note that adding constraints reduces the strength of the secret.
 - `use_symbols` (Boolean) Whether the secret should contain symbols.
 
+## Import
 
+In Terraform v1.5.0 and later, use an [`import` block](https://developer.hashicorp.com/terraform/language/import) to import the `credstash_secret` using the key of the credstash secret for the id parameter. For example:
+
+```terraform
+import {
+  to = credstash_secret.test_secret
+  id = "test.secret"
+}
+```
+
+Using `terraform import`, import `credstash_secret` using the key of the credstash secret for the id parameter. For example:
+
+```console
+> terraform import credstash_secret.test_secret "test.secret"
+```
