@@ -1,7 +1,7 @@
 ## v0.7.2 (07 23, 2025)
 
 - Add import documentation.
-- Update release.yml to remove --rm-dist which is fully deprecated. `dist` is now cleaned by default.
+- Update release.yml to remove `--rm-dist` which has been replaced with the functionally equivalent `--clean` argument.
 
 ## v0.7.1 (01 06, 2022)
 
