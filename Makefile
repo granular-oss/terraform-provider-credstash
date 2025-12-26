@@ -18,7 +18,9 @@ build:
 	@go build -v -o $(PLUGIN_BINARY_NAME)
 
 test:
-	go test -race -v github.com/granular-oss/terraform-provider-credstash/credstash
+	go test -race -v \
+		github.com/granular-oss/terraform-provider-credstash \
+		github.com/granular-oss/terraform-provider-credstash/credstash
 
 install: uninstall build
 	@echo "Installing TF Plugin locally"
