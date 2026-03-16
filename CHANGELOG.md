@@ -1,3 +1,7 @@
+## v0.7.3 (12 26, 2025)
+
+- Force resource replacement if the name attribute changes
+
 ## v0.7.2 (07 23, 2025)
 
 - Add import documentation.
