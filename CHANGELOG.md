@@ -1,3 +1,7 @@
+## v0.8.0 (03 16, 2026)
+
+- Add `ForceNew` to `credstash_secret` `name` attribute so that changing the name forces resource replacement instead of being silently ignored.
+
 ## v0.7.2 (07 23, 2025)
 
 - Add import documentation.

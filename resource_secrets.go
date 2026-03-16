@@ -22,6 +22,7 @@ func resourceSecret() *schema.Resource {
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
+				ForceNew:    true,
 				Description: "name of the secret",
 			},
 			"table": {
