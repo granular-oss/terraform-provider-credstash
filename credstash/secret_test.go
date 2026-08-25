@@ -3,17 +3,15 @@ package credstash
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/base64"
 	"encoding/hex"
 	"testing"
 
-	"encoding/base64"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-func dummyItemWithAllFields() map[string]*dynamodb.AttributeValue {
-	return map[string]*dynamodb.AttributeValue{
+func dummyItemWithAllFields() map[string]dbtypes.AttributeValue {
+	return map[string]dbtypes.AttributeValue{
 		"name":     attrValueString("test_key"),
 		"version":  attrValueString("0000000000000000001"),
 		"digest":   attrValueString("SHA256"),
@@ -23,33 +21,33 @@ func dummyItemWithAllFields() map[string]*dynamodb.AttributeValue {
 	}
 }
 
-func dummyItemWithBinaryHMAC(hmac string) map[string]*dynamodb.AttributeValue {
+func dummyItemWithBinaryHMAC(hmac string) map[string]dbtypes.AttributeValue {
 	item := dummyItemWithAllFields()
-	item["hmac"] = &dynamodb.AttributeValue{B: []byte(hmac)}
+	item["hmac"] = &dbtypes.AttributeValueMemberB{Value: []byte(hmac)}
 	return item
 }
 
-func dummyItemWithWrongKey() map[string]*dynamodb.AttributeValue {
+func dummyItemWithWrongKey() map[string]dbtypes.AttributeValue {
 	item := dummyItemWithAllFields()
 	item["key"] = attrValueString("not base64")
 	return item
 }
 
-func dummyItemWithMissingKey() map[string]*dynamodb.AttributeValue {
+func dummyItemWithMissingKey() map[string]dbtypes.AttributeValue {
 	item := dummyItemWithAllFields()
 	delete(item, "key")
 	return item
 }
 
-func attrValueString(v string) *dynamodb.AttributeValue {
-	return &dynamodb.AttributeValue{S: aws.String(v)}
+func attrValueString(v string) dbtypes.AttributeValue {
+	return &dbtypes.AttributeValueMemberS{Value: v}
 }
 
-func attrValueHexString(d []byte) *dynamodb.AttributeValue {
+func attrValueHexString(d []byte) dbtypes.AttributeValue {
 	return attrValueString(hex.EncodeToString(d))
 }
 
-func attrValueB64String(d []byte) *dynamodb.AttributeValue {
+func attrValueB64String(d []byte) dbtypes.AttributeValue {
 	return attrValueString(base64.StdEncoding.EncodeToString(d))
 }
 

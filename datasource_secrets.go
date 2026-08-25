@@ -59,10 +59,9 @@ func dataSourceSecretRead(ctx context.Context, d *schema.ResourceData, meta inte
 	version := d.Get("version").(int)
 	table := d.Get("table").(string)
 
-	context := credstash.NewEncryptionContextValue()
+	encContext := credstash.NewEncryptionContextValue()
 	for k, v := range d.Get("context").(map[string]interface{}) {
-		stringValue := fmt.Sprintf("%v", v)
-		(*context)[k] = &stringValue
+		(*encContext)[k] = fmt.Sprintf("%v", v)
 	}
 
 	var value *credstash.DecryptedCredential
@@ -72,14 +71,14 @@ func dataSourceSecretRead(ctx context.Context, d *schema.ResourceData, meta inte
 		"name":    name,
 		"version": version,
 		"table":   table,
-		"context": context,
+		"context": encContext,
 	})
 
 	if version == 0 {
-		value, err = client.GetHighestVersionSecret(table, name, context)
+		value, err = client.GetHighestVersionSecret(ctx, table, name, encContext)
 
 	} else {
-		value, err = client.GetSecret(name, table, client.PaddedInt(version), context)
+		value, err = client.GetSecret(ctx, name, table, client.PaddedInt(version), encContext)
 
 	}
 	if err != nil {

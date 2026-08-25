@@ -2,19 +2,21 @@ package credstash
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
+	"github.com/aws/smithy-go"
 	"github.com/secrethub/secrethub-go/pkg/randchar"
 )
 
@@ -39,15 +41,15 @@ const (
 	DefaultKmsKey = "alias/credstash"
 )
 
-func New(table string, sess *session.Session) *Client {
+func New(table string, dynamoClient dynamoDB, kmsClient decrypter) *Client {
 	return &Client{
 		table:     table,
-		decrypter: kms.New(sess),
-		dynamoDB:  dynamodb.New(sess),
+		decrypter: kmsClient,
+		dynamoDB:  dynamoClient,
 	}
 }
 
-func (c *Client) decryptCredential(cred *Credential, ctx *EncryptionContextValue) (*DecryptedCredential, error) {
+func (c *Client) decryptCredential(ctx context.Context, cred *Credential, encCtx *EncryptionContextValue) (*DecryptedCredential, error) {
 
 	wrappedKey, err := base64.StdEncoding.DecodeString(cred.Key)
 
@@ -55,18 +57,18 @@ func (c *Client) decryptCredential(cred *Credential, ctx *EncryptionContextValue
 		return nil, err
 	}
 
-	dk, err := c.DecryptDataKey(wrappedKey, ctx)
-	if awsErr, ok := err.(awserr.Error); ok {
-		// Create reasoned responses to assist with debugging
-		switch awsErr.Code() {
-		case "AccessDeniedException":
-			err = awserr.New(awsErr.Code(), "KMS Access Denied to decrypt", nil)
-		case "InvalidCiphertextException":
-			err = awserr.New(awsErr.Code(), "The encryption context provided "+
-				"may not match the one used when the credential was stored", nil)
-		}
-	}
+	dk, err := c.DecryptDataKey(ctx, wrappedKey, encCtx)
 	if err != nil {
+		// Create reasoned responses to assist with debugging
+		var apiErr smithy.APIError
+		if ok := errors.As(err, &apiErr); ok {
+			switch apiErr.ErrorCode() {
+			case "AccessDeniedException":
+				err = fmt.Errorf("KMS Access Denied to decrypt: %w", err)
+			case "InvalidCiphertextException":
+				err = fmt.Errorf("the encryption context provided may not match the one used when the credential was stored: %w", err)
+			}
+		}
 		return nil, err
 	}
 
@@ -96,24 +98,22 @@ func (c *Client) decryptCredential(cred *Credential, ctx *EncryptionContextValue
 }
 
 // GetHighestVersionSecret retrieves latest secret from dynamodb using the name
-func (c *Client) GetHighestVersionSecret(table string, name string, encContext *EncryptionContextValue) (*DecryptedCredential, error) {
+func (c *Client) GetHighestVersionSecret(ctx context.Context, table string, name string, encContext *EncryptionContextValue) (*DecryptedCredential, error) {
 	log.Print("Getting highest version secret")
 	if table == "" {
 		table = c.table
 	}
 
-	res, err := c.dynamoDB.Query(&dynamodb.QueryInput{
+	res, err := c.dynamoDB.Query(ctx, &dynamodb.QueryInput{
 		TableName: &table,
-		ExpressionAttributeNames: map[string]*string{
-			"#N": aws.String("name"),
+		ExpressionAttributeNames: map[string]string{
+			"#N": "name",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":name": {
-				S: aws.String(name),
-			},
+		ExpressionAttributeValues: map[string]dbtypes.AttributeValue{
+			":name": &dbtypes.AttributeValueMemberS{Value: name},
 		},
 		KeyConditionExpression: aws.String("#N = :name"),
-		Limit:                  aws.Int64(1),
+		Limit:                  aws.Int32(1),
 		ConsistentRead:         aws.Bool(true),
 		ScanIndexForward:       aws.Bool(false), // descending order
 	})
@@ -134,10 +134,10 @@ func (c *Client) GetHighestVersionSecret(table string, name string, encContext *
 		return nil, err
 	}
 
-	return c.decryptCredential(cred, encContext)
+	return c.decryptCredential(ctx, cred, encContext)
 }
 
-func (c *Client) GetSecret(name string, table string, paddedVersion string, ctx *EncryptionContextValue) (*DecryptedCredential, error) {
+func (c *Client) GetSecret(ctx context.Context, name string, table string, paddedVersion string, encCtx *EncryptionContextValue) (*DecryptedCredential, error) {
 	log.Printf("Getting secret: %s", name)
 
 	if table == "" {
@@ -145,14 +145,14 @@ func (c *Client) GetSecret(name string, table string, paddedVersion string, ctx 
 	}
 	log.Printf("GetSecret Final Table Name: %s", table)
 	params := &dynamodb.GetItemInput{
-		Key: map[string]*dynamodb.AttributeValue{
-			"name":    {S: aws.String(name)},
-			"version": {S: aws.String(paddedVersion)},
+		Key: map[string]dbtypes.AttributeValue{
+			"name":    &dbtypes.AttributeValueMemberS{Value: name},
+			"version": &dbtypes.AttributeValueMemberS{Value: paddedVersion},
 		},
 		TableName: &table,
 	}
 	log.Printf("GetSecret Params: %v", params)
-	res, err := c.dynamoDB.GetItem(params)
+	res, err := c.dynamoDB.GetItem(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -170,18 +170,18 @@ func (c *Client) GetSecret(name string, table string, paddedVersion string, ctx 
 		return nil, err
 	}
 
-	return c.decryptCredential(cred, ctx)
+	return c.decryptCredential(ctx, cred, encCtx)
 }
 
 // DecryptDataKey ask kms to decrypt the supplied data key
-func (c *Client) DecryptDataKey(ciphertext []byte, ctx *EncryptionContextValue) (*DataKey, error) {
+func (c *Client) DecryptDataKey(ctx context.Context, ciphertext []byte, encCtx *EncryptionContextValue) (*DataKey, error) {
 
 	params := &kms.DecryptInput{
 		CiphertextBlob:    ciphertext,
-		EncryptionContext: *ctx,
-		GrantTokens:       []*string{},
+		EncryptionContext: *encCtx,
+		GrantTokens:       []string{},
 	}
-	resp, err := c.decrypter.Decrypt(params)
+	resp, err := c.decrypter.Decrypt(ctx, params)
 
 	if err != nil {
 		return nil, err
@@ -231,7 +231,7 @@ func (c *Client) GenerateRandomSecret(length int, useSymbols bool, charsets []in
 	return value, nil
 }
 
-func (c *Client) PutSecret(tableName string, name string, value string, paddedVersion string, ctx *EncryptionContextValue) error {
+func (c *Client) PutSecret(ctx context.Context, tableName string, name string, value string, paddedVersion string, encCtx *EncryptionContextValue) error {
 	log.Print("Putting secret")
 
 	kmsKey := DefaultKmsKey
@@ -240,7 +240,7 @@ func (c *Client) PutSecret(tableName string, name string, value string, paddedVe
 		tableName = c.table
 	}
 
-	dk, err := generateDataKey(c.decrypter, kmsKey, ctx, 64)
+	dk, err := generateDataKey(ctx, c.decrypter, kmsKey, encCtx, 64)
 	if err != nil {
 		log.Printf("[DEBUG] GenerateDataKey failed: %v", err)
 		return err
@@ -269,18 +269,18 @@ func (c *Client) PutSecret(tableName string, name string, value string, paddedVe
 		CreatedAt: time.Now().Unix(),
 	}
 
-	data, err := dynamodbattribute.MarshalMap(cred)
+	data, err := attributevalue.MarshalMap(cred)
 
 	if err != nil {
 		log.Printf("[DEBUG] failed to DynamoDB marshal Record: %v", err)
 		return err
 	}
 
-	_, err = c.dynamoDB.PutItem(&dynamodb.PutItemInput{
+	_, err = c.dynamoDB.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: &tableName,
 		Item:      data,
-		ExpressionAttributeNames: map[string]*string{
-			"#N": aws.String("name"),
+		ExpressionAttributeNames: map[string]string{
+			"#N": "name",
 		},
 		ConditionExpression: aws.String("attribute_not_exists(#N)"),
 	})
@@ -289,22 +289,20 @@ func (c *Client) PutSecret(tableName string, name string, value string, paddedVe
 
 }
 
-func (c *Client) DeleteSecret(tableName string, name string) error {
+func (c *Client) DeleteSecret(ctx context.Context, tableName string, name string) error {
 	log.Print("Deleting secret")
 
 	if tableName == "" {
 		tableName = c.table
 	}
 
-	res, err := c.dynamoDB.Query(&dynamodb.QueryInput{
+	res, err := c.dynamoDB.Query(ctx, &dynamodb.QueryInput{
 		TableName: &tableName,
-		ExpressionAttributeNames: map[string]*string{
-			"#N": aws.String("name"),
+		ExpressionAttributeNames: map[string]string{
+			"#N": "name",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":name": {
-				S: aws.String(name),
-			},
+		ExpressionAttributeValues: map[string]dbtypes.AttributeValue{
+			":name": &dbtypes.AttributeValueMemberS{Value: name},
 		},
 		KeyConditionExpression: aws.String("#N = :name"),
 		ConsistentRead:         aws.Bool(true),
@@ -325,15 +323,11 @@ func (c *Client) DeleteSecret(tableName string, name string) error {
 
 		log.Printf("[DEBUG] Deleting name: %s version: %v", cred.Name, cred.Version)
 
-		_, err = c.dynamoDB.DeleteItem(&dynamodb.DeleteItemInput{
+		_, err = c.dynamoDB.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 			TableName: &tableName,
-			Key: map[string]*dynamodb.AttributeValue{
-				"name": {
-					S: aws.String(cred.Name),
-				},
-				"version": {
-					S: aws.String(cred.Version),
-				},
+			Key: map[string]dbtypes.AttributeValue{
+				"name":    &dbtypes.AttributeValueMemberS{Value: cred.Name},
+				"version": &dbtypes.AttributeValueMemberS{Value: cred.Version},
 			},
 		})
 
@@ -356,7 +350,7 @@ func (c *Client) PaddedInt(i int) string {
 
 // ResolveVersion converts an integer version to a string, or if a version isn't provided (0),
 // returns "1" if the secret doesn't exist or the latest version plus one (auto-increment) if it does.
-func (c *Client) ResolveVersion(tableName string, name string, version int) (string, error) {
+func (c *Client) ResolveVersion(ctx context.Context, tableName string, name string, version int) (string, error) {
 	log.Print("Resolving version")
 
 	if version != 0 {
@@ -367,7 +361,7 @@ func (c *Client) ResolveVersion(tableName string, name string, version int) (str
 		tableName = c.table
 	}
 
-	ver, err := GetHighestVersion(c.dynamoDB, &tableName, name)
+	ver, err := GetHighestVersion(ctx, c.dynamoDB, &tableName, name)
 	if err != nil {
 		if err == ErrSecretNotFound {
 			return c.PaddedInt(1), nil
