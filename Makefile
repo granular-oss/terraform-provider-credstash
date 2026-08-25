@@ -44,7 +44,7 @@ run_integration_test: install
 	@rm -rf integration_test/tf/.terraform.lock.hcl
 	@rm -rf integration_test/invalid_tf/.terraform
 	@rm -rf integration_test/invalid_tf/.terraform.lock.hcl
-	pip3 install credstash
+	pipx install credstash
 	go test github.com/granular-oss/terraform-provider-credstash/integration_test
 	@rm -rf integration_test/tf/providers/
 	@rm -rf integration_test/invalid_tf/providers/
