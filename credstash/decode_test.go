@@ -19,7 +19,7 @@ func TestDecode(t *testing.T) {
 	}{}
 
 	data := map[string]dbtypes.AttributeValue{
-		"name": &dbtypes.AttributeValueMemberS{Value: "data"},
+		"name":      &dbtypes.AttributeValueMemberS{Value: "data"},
 		"timestamp": &dbtypes.AttributeValueMemberN{Value: "1449038525717338459"},
 	}
 

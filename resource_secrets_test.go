@@ -31,7 +31,7 @@ func TestResourceSecretNameFieldForceNew(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resource := resourceSecret()
 			nameField := resource.Schema["name"]
-			
+
 			// Verify ForceNew is set
 			assert.True(t, nameField.ForceNew, "name field should have ForceNew=true")
 		})
