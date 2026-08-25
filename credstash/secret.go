@@ -1,12 +1,14 @@
 package credstash
 
 import (
+	"context"
 	"errors"
 	"log"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
 )
 
 var (
@@ -26,18 +28,18 @@ type DataKey struct {
 	Plaintext      []byte
 }
 
-func generateDataKey(svc decrypter, alias string, ctx *EncryptionContextValue, size int) (*DataKey, error) {
+func generateDataKey(ctx context.Context, svc decrypter, alias string, encCtx *EncryptionContextValue, size int) (*DataKey, error) {
 
-	numberOfBytes := int64(size)
+	numberOfBytes := int32(size)
 
 	params := &kms.GenerateDataKeyInput{
 		KeyId:             aws.String(alias),
-		EncryptionContext: *ctx,
-		GrantTokens:       []*string{},
-		NumberOfBytes:     aws.Int64(numberOfBytes),
+		EncryptionContext: *encCtx,
+		GrantTokens:       []string{},
+		NumberOfBytes:     aws.Int32(numberOfBytes),
 	}
 
-	resp, err := svc.GenerateDataKey(params)
+	resp, err := svc.GenerateDataKey(ctx, params)
 
 	if err != nil {
 		return nil, err
@@ -60,21 +62,19 @@ type keyMaterial struct {
 }
 
 // GetHighestVersion look up the highest version for a given name
-func GetHighestVersion(svc dynamoDB, tableName *string, name string) (string, error) {
+func GetHighestVersion(ctx context.Context, svc dynamoDB, tableName *string, name string) (string, error) {
 	log.Printf("[DEBUG]  Looking up highest version: %s", name)
 
-	res, err := svc.Query(&dynamodb.QueryInput{
+	res, err := svc.Query(ctx, &dynamodb.QueryInput{
 		TableName: tableName,
-		ExpressionAttributeNames: map[string]*string{
-			"#N": aws.String("name"),
+		ExpressionAttributeNames: map[string]string{
+			"#N": "name",
 		},
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":name": {
-				S: aws.String(name),
-			},
+		ExpressionAttributeValues: map[string]dbtypes.AttributeValue{
+			":name": &dbtypes.AttributeValueMemberS{Value: name},
 		},
 		KeyConditionExpression: aws.String("#N = :name"),
-		Limit:                  aws.Int64(1),
+		Limit:                  aws.Int32(1),
 		ConsistentRead:         aws.Bool(true),
 		ScanIndexForward:       aws.Bool(false), // descending order
 		ProjectionExpression:   aws.String("version"),
@@ -89,11 +89,14 @@ func GetHighestVersion(svc dynamoDB, tableName *string, name string) (string, er
 		return "", ErrSecretNotFound
 	}
 
-	v := res.Items[0]["version"]
-
-	if v == nil {
+	v, ok := res.Items[0]["version"]
+	if !ok {
 		return "", ErrSecretNotFound
 	}
 
-	return aws.StringValue(v.S), nil
+	if member, ok := v.(*dbtypes.AttributeValueMemberS); ok {
+		return member.Value, nil
+	}
+
+	return "", ErrSecretNotFound
 }

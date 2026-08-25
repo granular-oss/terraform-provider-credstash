@@ -7,8 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,13 +18,9 @@ func TestDecode(t *testing.T) {
 		Timestamp int64  `dynamodbav:"timestamp"`
 	}{}
 
-	data := map[string]*dynamodb.AttributeValue{
-		"name": {
-			S: aws.String("data"),
-		},
-		"timestamp": {
-			N: aws.String("1449038525717338459"),
-		},
+	data := map[string]dbtypes.AttributeValue{
+		"name": &dbtypes.AttributeValueMemberS{Value: "data"},
+		"timestamp": &dbtypes.AttributeValueMemberN{Value: "1449038525717338459"},
 	}
 
 	err := Decode(data, &cred)

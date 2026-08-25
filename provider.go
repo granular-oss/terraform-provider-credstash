@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/granular-oss/terraform-provider-credstash/credstash"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -14,7 +15,7 @@ import (
 const defaultAWSProfile = "default"
 
 func Provider() *schema.Provider {
-	// rovider that enables reading and creating of secrets with credstash
+	// Provider that enables reading and creating of secrets with credstash
 	return &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
 			"credstash_secret": dataSourceSecret(),
@@ -55,26 +56,27 @@ func providerConfig(ctx context.Context, d *schema.ResourceData) (interface{}, d
 	table := d.Get("table").(string)
 	profile := d.Get("profile").(string)
 
-	var sess *session.Session
-	var err error
+	var opts []func(*awsconfig.LoadOptions) error
+	opts = append(opts, awsconfig.WithRegion(region))
+
 	if profile != defaultAWSProfile {
-		tflog.Debug(ctx, "Creating AWS Session", map[string]interface{}{
+		tflog.Debug(ctx, "Creating AWS config", map[string]interface{}{
 			"profile": profile,
 		})
-		sess, err = session.NewSessionWithOptions(session.Options{
-			Config:            aws.Config{Region: aws.String(region)},
-			Profile:           profile,
-			SharedConfigState: session.SharedConfigEnable,
-		})
-	} else {
-		sess, err = session.NewSession(&aws.Config{Region: aws.String(region)})
+		opts = append(opts, awsconfig.WithSharedConfigProfile(profile))
 	}
+
+	cfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return nil, diag.FromErr(err)
 	}
+
 	tflog.Debug(ctx, "Creating Credstash Client", map[string]interface{}{
 		"table": table,
 	})
 
-	return credstash.New(table, sess), nil
+	dynamoClient := dynamodb.NewFromConfig(cfg)
+	kmsClient := kms.NewFromConfig(cfg)
+
+	return credstash.New(table, dynamoClient, kmsClient), nil
 }
