@@ -39,7 +39,7 @@ release:
 
 run_integration_test: install
 	@echo "Running Intergation Test"
-	@go clean -testcache ./...
+	@go clean -testcache
 	@rm -rf integration_test/tf/.terraform
 	@rm -rf integration_test/tf/.terraform.lock.hcl
 	@rm -rf integration_test/invalid_tf/.terraform
